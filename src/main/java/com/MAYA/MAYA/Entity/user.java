@@ -1,7 +1,7 @@
 package com.MAYA.MAYA.Entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+
+import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
@@ -13,8 +13,13 @@ import lombok.*;
 @ToString
 
 public class user {
-private long UserId;
-private String name;
-private String password;
+
+   @Id
+   @GeneratedValue(strategy = GenerationType.AUTO)
+   private long UserId;
+
+   private String name;
+
+   private String password;
 
 }
