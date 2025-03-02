@@ -8,9 +8,9 @@ import lombok.*;
 @Table(name="users")
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 @Getter
 @Setter
-@ToString
 
 public class user {
 
@@ -22,4 +22,27 @@ public class user {
 
    private String password;
 
+   public long getUserId() {
+      return UserId;
+   }
+
+   public String getName() {
+      return name;
+   }
+
+   public String getPassword() {
+      return password;
+   }
+
+   public void setUserId(long userId) {
+      UserId = userId;
+   }
+
+   public void setName(String name) {
+      this.name = name;
+   }
+
+   public void setPassword(String password) {
+      this.password = password;
+   }
 }
