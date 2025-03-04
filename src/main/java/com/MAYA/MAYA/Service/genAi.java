@@ -34,7 +34,7 @@ public class genAi {
                 "        {\n" +
                 "            \"parts\": [\n" +
                 "                {\n" +
-                "                    \"text\": \"list down all country name in alphabetical order \"\n" +
+                "                    \"text\": \"Tell me story about a cow\"\n" +
                 "                }\n" +
                 "            ]\n" +
                 "        }\n" +

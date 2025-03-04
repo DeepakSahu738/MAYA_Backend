@@ -9,21 +9,19 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-@Getter
-@Setter
 
 public class user {
 
    @Id
    @GeneratedValue(strategy = GenerationType.AUTO)
-   private long UserId;
+   private long id;
 
    private String name;
 
    private String password;
 
    public long getUserId() {
-      return UserId;
+      return id;
    }
 
    public String getName() {
@@ -35,7 +33,7 @@ public class user {
    }
 
    public void setUserId(long userId) {
-      UserId = userId;
+      id = userId;
    }
 
    public void setName(String name) {
