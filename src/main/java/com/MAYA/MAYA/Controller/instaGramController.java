@@ -2,6 +2,7 @@ package com.MAYA.MAYA.Controller;
 
 import com.MAYA.MAYA.DTO.instagram.*;
 import com.MAYA.MAYA.Service.instaGramService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.Map;
 @CrossOrigin(origins = "http://localhost:9090")
 public class instaGramController {
 
+    @Autowired
     private instaGramService instaGramService;
     @PostMapping("/insta_one")
     public Map<String, String> generateContentIdea(@RequestBody ContentIdeaDTO request) {
