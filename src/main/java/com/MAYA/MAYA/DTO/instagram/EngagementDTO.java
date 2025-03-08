@@ -1,6 +1,6 @@
-package com.MAYA.MAYA.DTO;
+package com.MAYA.MAYA.DTO.instagram;
 
-public class instaPrompt_FIVE {
+public class EngagementDTO {
 
     private String contentGoal;
     private String targetAudience;

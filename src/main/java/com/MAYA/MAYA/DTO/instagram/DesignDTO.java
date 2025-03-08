@@ -1,6 +1,6 @@
-package com.MAYA.MAYA.DTO;
+package com.MAYA.MAYA.DTO.instagram;
 
-public class instaPrompt_FOUR {
+public class DesignDTO {
 
     private String niche;
     private String toneStyle;

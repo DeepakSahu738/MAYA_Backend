@@ -1,8 +1,8 @@
-package com.MAYA.MAYA.DTO;
+package com.MAYA.MAYA.DTO.instagram;
 
 import java.util.List;
 
-public class instaPrompt_THREE {
+public class HashtagsDTO {
     private String niche;
     private List<String> keywords;
     private String trendingOrEvergreen;

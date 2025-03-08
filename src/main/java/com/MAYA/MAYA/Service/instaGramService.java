@@ -7,11 +7,12 @@ import java.util.List;
 @Service
 public class instaGramService {
 
-    public String createPrompt_ONE(String contentGoal, String niche,String contentType,
+    public String generateContentIdeas(String contentGoal, String niche,String contentType,
      String trendingOrEvergreen,String targetAudience){
-        String prompt_one = "Generate 3 unique Instagram content ideas for a {Content Goal} " +
-                "in the {Niche} niche. The content type is {Content Type}, targeting {Target Audience}." +
-                " The content should be {Trending/Evergreen} and align with the audience's interests.";
+        String prompt_one = "Create 5 content ideas for {Content Goal} in the {Niche} niche." +
+                " The content type is {Content Type}, targeting {Target Audience}." +
+                " Focus on making the content {Trending/Evergreen} and relevant to the audience's current " +
+                "interests and challenges.";
         prompt_one = prompt_one.replace("{Content Goal}", contentGoal);
         prompt_one = prompt_one.replace("{Niche}", niche);
         prompt_one = prompt_one.replace("{Content Type}", contentType);
@@ -21,12 +22,11 @@ public class instaGramService {
 
     }
 
-    public String createPrompt_TWO(String contentIdea,String toneStyle,String callToAction)
+    public String generateCaptionWithCTA(String contentIdea,String toneStyle,String callToAction)
     {
-        String prompt_two= "Write an engaging Instagram caption for the content idea: '{Content Idea}'." +
-                " The caption should have a {Tone & Style} " +
-                "tone and end with a call-to-action: '{CTA}'." +
-                " Keep the caption short, creative, and Instagram-friendly.";
+        String prompt_two= "Craft a persuasive instagram caption for the content idea: '{Content Idea}'." +
+                " Use a {Tone & Style} tone, and ensure the caption encourages action by including the CTA: '{CTA}'." +
+                " Focus on being clear and compelling.";
         prompt_two = prompt_two.replace("{Content Idea}", contentIdea);
         prompt_two = prompt_two.replace("{Tone & Style}", toneStyle);
         prompt_two = prompt_two.replace("{CTA}", callToAction);
@@ -34,10 +34,11 @@ public class instaGramService {
         return prompt_two;
     }
 
-    public  String createPrompt_THREE(String niche, List<String> keywords, String trendingOrEvergreen)
+    public  String suggestHashtags(String niche, List<String> keywords, String trendingOrEvergreen)
     {
-        String prompt_three = "Suggest 10 Instagram hashtags for a {Niche} post about " +
-                "{Keywords}. Include a mix of trending and niche-specific hashtags.";
+        String prompt_three = "Provide 10 instagram hashtags for a {Niche} post about {Keywords}." +
+                " Focus on using hashtags that resonate with {Target Audience} and include both trending and niche-specific options." +
+                "Optimize for both engagement and discoverability";
         String keywordsString = String.join(", ", keywords);
         prompt_three = prompt_three.replace("{Niche}", niche);
         prompt_three = prompt_three.replace("{Keywords}", keywordsString);
@@ -47,13 +48,13 @@ public class instaGramService {
         return prompt_three;
     }
 
-    public String createPrompt_FOUR( String niche,
+    public String suggestDesignAndAesthetic( String niche,
      String toneStyle,
      String contentType)
     {
-        String  prompt_four = "Suggest color palettes, font styles," +
-                " and visual elements for an Instagram {Content Type} post in the {Niche}" +
-                " niche with a {Tone & Style} style.";
+        String  prompt_four = "Recommend color schemes, font choices, and visual design elements for an " +
+                "instagram {Content Type} post in the {Niche} niche. The design should align with the brand’s " +
+                "identity and have a {Tone & Style} style.";
         prompt_four = prompt_four.replace("{Content Type}", contentType);
         prompt_four = prompt_four.replace("{Tone & Style}", toneStyle);
         prompt_four = prompt_four.replace("{Niche}", niche);
@@ -62,24 +63,26 @@ public class instaGramService {
 
     }
 
-    public String createPrompt_FIVE(String contentGoal,String targetAudience)
+    public String generateEngagementStrategies(String contentGoal,String targetAudience)
     {
-        String prompt_five = "Suggest 3 engagement strategies to maximize " +
-                "{Content Goal} for Instagram content targeted at {Target Audience}." +
-                " Include interactive ideas like stories, giveaways, and Q&A.";
+        String prompt_five = "Provide 3 engagement strategies to boost {Content Goal} for " +
+                "instagram content targeted at {Target Audience}. Focus on creating interactive and " +
+                "relatable content, including polls, live sessions, and user-generated content." +
+                " Aim to increase engagement and build community.";
         prompt_five = prompt_five.replace("{Content Goal}", contentGoal);
         prompt_five = prompt_five.replace("{Target Audience}", targetAudience);
 
         return prompt_five;
     }
 
-    public String createPrompt_SIX(String targetAudience,String niche)
+    public String suggestBestPostTime(String targetAudience,String niche)
     {
-        String prompt_six = "Based on common Instagram engagement patterns," +
-                " recommend the best posting time for {Target Audience} in the {Niche} niche." ;
+        String prompt_six = "Suggest the best time to post on instagram for {Target Audience} in the {Niche} niche. " +
+                "Take into account when the audience typically engages most, such as during peak hours or specific days " +
+                "of the week." ;
         prompt_six = prompt_six.replace("{Niche}", niche);
         prompt_six = prompt_six.replace("{Target Audience}", targetAudience);
-        return "";
+        return prompt_six;
     }
 
 }

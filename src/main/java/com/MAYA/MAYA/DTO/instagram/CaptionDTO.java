@@ -1,6 +1,6 @@
-package com.MAYA.MAYA.DTO;
+package com.MAYA.MAYA.DTO.instagram;
 
-public class instaPrompt_TWO {
+public class CaptionDTO {
 
     private String contentIdea;
     private String toneStyle;

@@ -1,6 +1,6 @@
-package com.MAYA.MAYA.DTO;
+package com.MAYA.MAYA.DTO.instagram;
 
-public class instaPrompt_SIX {
+public class PostingTimeDTO {
     private String targetAudience;
     private String niche;
 

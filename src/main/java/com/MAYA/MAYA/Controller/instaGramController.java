@@ -1,6 +1,6 @@
 package com.MAYA.MAYA.Controller;
 
-import com.MAYA.MAYA.DTO.*;
+import com.MAYA.MAYA.DTO.instagram.*;
 import com.MAYA.MAYA.Service.instaGramService;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,10 +16,10 @@ public class instaGramController {
 
     private instaGramService instaGramService;
     @PostMapping("/insta_one")
-    public Map<String, String> generateContentIdea(@RequestBody  instaPrompt_ONE request) {
+    public Map<String, String> generateContentIdea(@RequestBody ContentIdeaDTO request) {
 
         // Simulated response (Later, we will integrate LangChain AI here)
-        String generateCoreIdea = instaGramService.createPrompt_ONE(request.getContentGoal(),request.getNiche(),request.getContentType()
+        String generateCoreIdea = instaGramService.generateContentIdeas(request.getContentGoal(),request.getNiche(),request.getContentType()
         ,request.getTrendingOrEvergreen(),request.getTargetAudience());
 
         // Returning a JSON response  not using the instaService currently will integrate when we integrate Langchain AI
@@ -29,11 +29,11 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_two")
-    public Map<String, String> generateCaption(@RequestBody instaPrompt_TWO request) {
+    public Map<String, String> generateCaption(@RequestBody CaptionDTO request) {
 
         // Simulated response (Later, we will integrate LangChain AI here)
 
-        String generateCaptionWithCTA = instaGramService.createPrompt_TWO(request.getContentIdea()
+        String generateCaptionWithCTA = instaGramService.generateCaptionWithCTA(request.getContentIdea()
                 ,request.getToneStyle(),request.getCallToAction());
 
         // Returning a JSON response  not using the instaService currently will integrate when we integrate Langchain AI
@@ -43,11 +43,11 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_three")
-    public Map<String, List<String>> generateHashtags(@RequestBody instaPrompt_THREE request) {
+    public Map<String, List<String>> generateHashtags(@RequestBody HashtagsDTO request) {
         List<String> generatedHashtags = new ArrayList<>();
 
         // Simulating hashtag generation (Later, we will integrate LangChain AI)
-        String generatedHashtags1 =  instaGramService.createPrompt_THREE(request.getNiche(),request.getKeywords(),
+        String generatedHashtags1 =  instaGramService.suggestHashtags(request.getNiche(),request.getKeywords(),
                 request.getTrendingOrEvergreen());
 //        for (String keyword : request.getKeywords()) {
 //            generatedHashtags.add("#" + keyword.replace(" ", "").toLowerCase());
@@ -68,11 +68,11 @@ public class instaGramController {
 
 
     @PostMapping("/insta_four")
-    public Map<String, String> generateHook(@RequestBody instaPrompt_FOUR request) {
+    public Map<String, String> generateDesignAndSuggestion(@RequestBody DesignDTO request) {
 
         // Simulated response (Later, we will integrate LangChain AI)
 
-        String generateDesignAestheticSugestion =instaGramService.createPrompt_FOUR(request.getNiche(),
+        String generateDesignAestheticSugestion =instaGramService.suggestDesignAndAesthetic(request.getNiche(),
                 request.getToneStyle(),request.getContentType());
 
         // Returning a JSON response not using the instaService currently will integrate when we integrate Langchain AI
@@ -83,9 +83,9 @@ public class instaGramController {
 
 
     @PostMapping("/insta_five")
-    public Map<String, String> generateStrategy(@RequestBody instaPrompt_FIVE request) {
+    public Map<String, String> generateStrategyForEngagement(@RequestBody EngagementDTO request) {
         // Simulated response (Later, we will integrate LangChain AI)
-        String generateEngagementTips = instaGramService.createPrompt_FIVE(request.getContentGoal(),request.getTargetAudience());
+        String generateEngagementTips = instaGramService.generateEngagementStrategies(request.getContentGoal(),request.getTargetAudience());
 
         // Returning a JSON response
         Map<String, String> response = new HashMap<>();
@@ -94,9 +94,9 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_six")
-    public Map<String, String> generateContentAdvice(@RequestBody instaPrompt_SIX request) {
+    public Map<String, String> generateContentPostingTime(@RequestBody PostingTimeDTO request) {
         // Simulated response (Later, we will integrate LangChain AI)
-        String generateBestPostingTime = instaGramService.createPrompt_SIX(request.getNiche(),request.getTargetAudience());
+        String generateBestPostingTime = instaGramService.suggestBestPostTime(request.getNiche(),request.getTargetAudience());
 
         // Returning a JSON response
         Map<String, String> response = new HashMap<>();
