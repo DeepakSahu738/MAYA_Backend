@@ -1,88 +1,132 @@
 package com.MAYA.MAYA.Service;
 
+import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class instaGramService {
 
+    public final OpenAiChatModel chatModel;
+
+    public instaGramService(OpenAiChatModel chatModel) {
+        this.chatModel = chatModel;
+    }
+
     public String generateContentIdeas(String contentGoal, String niche,String contentType,
      String trendingOrEvergreen,String targetAudience){
-        String prompt_one = "Create 5 content ideas for {Content Goal} in the {Niche} niche." +
-                " The content type is {Content Type}, targeting {Target Audience}." +
-                " Focus on making the content {Trending/Evergreen} and relevant to the audience's current " +
-                "interests and challenges.";
-        prompt_one = prompt_one.replace("{Content Goal}", contentGoal);
-        prompt_one = prompt_one.replace("{Niche}", niche);
-        prompt_one = prompt_one.replace("{Content Type}", contentType);
-        prompt_one = prompt_one.replace("{Target Audience}", targetAudience);
-        prompt_one = prompt_one.replace("{Trending/Evergreen}", trendingOrEvergreen);
-        return prompt_one;
+        PromptTemplate template = PromptTemplate.from(
+                "Create 5 content ideas for '{{contentGoal}}' in the '{{niche}}' niche." +
+                        " The content type is '{{contentType}}', targeting '{{targetAudience}}'." +
+                        " Focus on making the content '{{trendingOrEvergreen}}' and relevant to the audience's current " +
+                        "interests and challenges."
+        );
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("contentGoal", contentGoal);
+        variables.put("niche", niche);
+        variables.put("contentType", contentType);
+        variables.put("targetAudience", targetAudience);
+        variables.put("trendingOrEvergreen", trendingOrEvergreen);
+
+        Prompt result = template.apply(variables);
+
+        return chatModel.generate(String.valueOf(result));
 
     }
 
     public String generateCaptionWithCTA(String contentIdea,String toneStyle,String callToAction)
     {
-        String prompt_two= "Craft a persuasive instagram caption for the content idea: '{Content Idea}'." +
-                " Use a {Tone & Style} tone, and ensure the caption encourages action by including the CTA: '{CTA}'." +
-                " Focus on being clear and compelling.";
-        prompt_two = prompt_two.replace("{Content Idea}", contentIdea);
-        prompt_two = prompt_two.replace("{Tone & Style}", toneStyle);
-        prompt_two = prompt_two.replace("{CTA}", callToAction);
+        PromptTemplate template = PromptTemplate.from(
+                "Craft a persuasive instagram caption for the content idea: '{{contentIdea}}'." +
+                        " Use a '{{toneStyle}}' tone, and ensure the caption encourages action by including the CTA: '{{callToAction}}'." +
+                        " Focus on being clear and compelling."
+        );
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("contentIdea", contentIdea);
+        variables.put("toneStyle", toneStyle);
+        variables.put("callToAction", callToAction);
 
-        return prompt_two;
+        Prompt result = template.apply(variables);
+
+        return chatModel.generate(String.valueOf(result));
     }
 
     public  String suggestHashtags(String niche, List<String> keywords, String trendingOrEvergreen)
     {
-        String prompt_three = "Provide 10 instagram hashtags for a {Niche} post about {Keywords}." +
-                " Focus on using hashtags that resonate with {Target Audience} and include both trending and niche-specific options." +
-                "Optimize for both engagement and discoverability";
+        PromptTemplate template = PromptTemplate.from(
+                "Provide 10 instagram hashtags for a '{{niche}}' post about '{{keywords}]'." +
+                        " Focus on using hashtags that resonate with '{{trendingOrEvergreen}}' and include both trending and niche-specific options." +
+                        "Optimize for both engagement and discoverability"
+        );
         String keywordsString = String.join(", ", keywords);
-        prompt_three = prompt_three.replace("{Niche}", niche);
-        prompt_three = prompt_three.replace("{Keywords}", keywordsString);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("niche", niche);
+        variables.put("keywords", keywordsString);
+        variables.put("trendingOrEvergreen", trendingOrEvergreen);
 
 
+        Prompt result = template.apply(variables);
 
-        return prompt_three;
+        return chatModel.generate(String.valueOf(result));
     }
 
     public String suggestDesignAndAesthetic( String niche,
      String toneStyle,
      String contentType)
     {
-        String  prompt_four = "Recommend color schemes, font choices, and visual design elements for an " +
-                "instagram {Content Type} post in the {Niche} niche. The design should align with the brand’s " +
-                "identity and have a {Tone & Style} style.";
-        prompt_four = prompt_four.replace("{Content Type}", contentType);
-        prompt_four = prompt_four.replace("{Tone & Style}", toneStyle);
-        prompt_four = prompt_four.replace("{Niche}", niche);
+        PromptTemplate template = PromptTemplate.from(
+                "Recommend color schemes, font choices, and visual design elements for an " +
+                        "instagram '{{contentType}}' post in the '{{niche}}' niche. The design should align with the brand’s " +
+                        "identity and have a '{{toneStyle}}' style."
+        );
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("toneStyle", toneStyle);
+        variables.put("niche", niche);
+        variables.put("contentType", contentType);
 
-        return prompt_four;
+        Prompt result = template.apply(variables);
+
+        return chatModel.generate(String.valueOf(result));
 
     }
 
     public String generateEngagementStrategies(String contentGoal,String targetAudience)
     {
-        String prompt_five = "Provide 3 engagement strategies to boost {Content Goal} for " +
-                "instagram content targeted at {Target Audience}. Focus on creating interactive and " +
-                "relatable content, including polls, live sessions, and user-generated content." +
-                " Aim to increase engagement and build community.";
-        prompt_five = prompt_five.replace("{Content Goal}", contentGoal);
-        prompt_five = prompt_five.replace("{Target Audience}", targetAudience);
 
-        return prompt_five;
+        PromptTemplate template = PromptTemplate.from(
+                "Provide 3 engagement strategies to boost '{{contentGoal}}' for " +
+                        "instagram content targeted at '{{targetAudience}}'. Focus on creating interactive and " +
+                        "relatable content, including polls, live sessions, and user-generated content." +
+                        " Aim to increase engagement and build community."
+        );
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("contentGoal", contentGoal);
+        variables.put("targetAudience", targetAudience);
+
+        Prompt result = template.apply(variables);
+
+        return chatModel.generate(String.valueOf(result));
     }
 
     public String suggestBestPostTime(String targetAudience,String niche)
     {
-        String prompt_six = "Suggest the best time to post on instagram for {Target Audience} in the {Niche} niche. " +
-                "Take into account when the audience typically engages most, such as during peak hours or specific days " +
-                "of the week." ;
-        prompt_six = prompt_six.replace("{Niche}", niche);
-        prompt_six = prompt_six.replace("{Target Audience}", targetAudience);
-        return prompt_six;
+        PromptTemplate template = PromptTemplate.from(
+                "Suggest the best time to post on instagram for '{{targetAudience}}' in the '{{niche}}' niche. " +
+                        "Take into account when the audience typically engages most, such as during peak hours or specific days " +
+                        "of the week."
+        );
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("niche", niche);
+        variables.put("targetAudience", targetAudience);
+
+        Prompt result = template.apply(variables);
+
+        return chatModel.generate(String.valueOf(result));
     }
 
 }
