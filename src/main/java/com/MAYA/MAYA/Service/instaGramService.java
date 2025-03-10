@@ -35,7 +35,7 @@ public class instaGramService {
 
         Prompt result = template.apply(variables);
 
-        return chatModel.generate(String.valueOf(result));
+        return chatModel.generate(result.text());
 
     }
 
@@ -53,7 +53,7 @@ public class instaGramService {
 
         Prompt result = template.apply(variables);
 
-        return chatModel.generate(String.valueOf(result));
+        return chatModel.generate(result.text());
     }
 
     public  String suggestHashtags(String niche, List<String> keywords, String trendingOrEvergreen)
@@ -72,7 +72,7 @@ public class instaGramService {
 
         Prompt result = template.apply(variables);
 
-        return chatModel.generate(String.valueOf(result));
+        return chatModel.generate(result.text());
     }
 
     public String suggestDesignAndAesthetic( String niche,
@@ -91,8 +91,7 @@ public class instaGramService {
 
         Prompt result = template.apply(variables);
 
-        return chatModel.generate(String.valueOf(result));
-
+        return chatModel.generate(result.text());
     }
 
     public String generateEngagementStrategies(String contentGoal,String targetAudience)
@@ -110,7 +109,7 @@ public class instaGramService {
 
         Prompt result = template.apply(variables);
 
-        return chatModel.generate(String.valueOf(result));
+        return chatModel.generate(result.text());
     }
 
     public String suggestBestPostTime(String targetAudience,String niche)
@@ -126,7 +125,7 @@ public class instaGramService {
 
         Prompt result = template.apply(variables);
 
-        return chatModel.generate(String.valueOf(result));
+        return chatModel.generate(result.text());
     }
 
 }
