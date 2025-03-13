@@ -2,6 +2,7 @@ package com.MAYA.MAYA.Controller;
 
 import com.MAYA.MAYA.DTO.instagram.*;
 import com.MAYA.MAYA.Service.TemporaryStorageService;
+import com.MAYA.MAYA.Service.demoLangChainService;
 import com.MAYA.MAYA.Service.instaGramService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/content")
@@ -19,6 +21,8 @@ public class instaGramController {
     private instaGramService instaGramService;
     @Autowired
     private TemporaryStorageService storageService;
+    @Autowired
+    private demoLangChainService langChainService;
     @PostMapping("/insta_one")
     private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody ContentIdeaDTO request) {
         //we are doing the LangChain stuff in the service section
@@ -152,6 +156,79 @@ public class instaGramController {
             response.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    @PostMapping("/insta_chain")
+    private ResponseEntity<Map<String, String>> generateContentChainedVersion(@RequestBody CombinedFieldsForChainFlowDTO request)
+    {
+        try {
+            List<String>  contentIdea = langChainService.generateContentIdeas(
+                    request.getContentGoal(),
+                    request.getNiche(),
+                    request.getContentType(),
+                    request.getTrendingOrEvergreen(),
+                    request.getTargetAudience()
+            );
+            System.out.println("Generated Content Idea: " + contentIdea);
+
+            String response =contentIdea.stream().map(idea->
+            {
+                // Step 2 generate caption based on the content idea
+                String caption = langChainService.generateCaption(
+                        idea,
+                        request.getToneStyle(),
+                        request.getCallToAction()
+                );
+
+                // Step 3: Generate Hashtags based on inputs
+                String hashtags = langChainService.generateHashtags(idea,
+                        request.getNiche(),
+                        request.getKeywords(),
+                        request.getTrendingOrEvergreen()
+                );
+                // Step 4 generate Design And Aesthetic
+
+                String dAndA = langChainService.generateDesignAndAesthetic(idea,
+                        request.getNiche(),
+                        request.getToneStyle(),
+                        request.getContentGoal()
+                );
+
+                //Step 5 generate Engagement Strategies
+
+                String EngagementStrategies = langChainService.generateEngagementStrategies(idea,
+                        request.getContentGoal(),
+                        request.getTargetAudience()
+                );
+
+                //Step 6 generate time to post
+
+                String TimeToPost = langChainService.suggestBestPostTime(idea,
+                        request.getTargetAudience(),
+                        request.getNiche()
+                );
+                return "Content Idea:\n" + idea +
+                        "\n\nCaption:\n" + caption +
+                        "\n\nHashtags:\n" + hashtags +
+                        "dAndA:\n" + dAndA +
+                        "\n\nEngagementStrategies:\n" + EngagementStrategies +
+                        "\n\nTimeToPost:\n" + TimeToPost +
+
+                        "\n----------------------\n";
+
+            }).collect(Collectors.joining("\n"));
+            Map<String, String> responsereturned = new HashMap<>();
+            responsereturned.put("contentAdvice", response);
+            return new ResponseEntity<>(responsereturned, HttpStatus.OK);
+
+        }
+        // Returning a JSON response
+        catch (Exception e){
+            Map<String, String> responsereturnedError = new HashMap<>();
+            responsereturnedError.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
+            return  new ResponseEntity<>(responsereturnedError, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
     }
 
 

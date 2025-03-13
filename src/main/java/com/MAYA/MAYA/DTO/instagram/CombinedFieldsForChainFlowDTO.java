@@ -9,7 +9,7 @@ public class CombinedFieldsForChainFlowDTO {
     private String contentGoal;
     private String toneStyle;
     private String callToAction;
-    private String contentIdea;
+    private String niche;
     private String targetAudience;
     private List<String> keywords;
     private String trendingOrEvergreen;
@@ -27,8 +27,8 @@ public class CombinedFieldsForChainFlowDTO {
         return callToAction;
     }
 
-    public String getContentIdea() {
-        return contentIdea;
+    public String getNiche() {
+        return niche;
     }
 
     public String getTargetAudience() {
@@ -61,8 +61,8 @@ public class CombinedFieldsForChainFlowDTO {
         this.callToAction = callToAction;
     }
 
-    public void setContentIdea(String contentIdea) {
-        this.contentIdea = contentIdea;
+    public void setNiche(String contentIdea) {
+        this.niche = contentIdea;
     }
 
     public void setTargetAudience(String targetAudience) {
