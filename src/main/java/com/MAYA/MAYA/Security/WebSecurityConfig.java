@@ -57,7 +57,6 @@ public class WebSecurityConfig {
       public JwtDecoder jwtDecoder() {
       // Use a secret key to decode the JWT (make sure the key matches the one you use to sign the JWT)
           String secretKey = JWT_SECRET; // secret key
-          System.out.println("yaha tak aaya aur ye secret key onj h "+JWT_SECRET);
           byte[] keyBytes = Base64.getDecoder().decode(secretKey);  // Decode your key if it's Base64 encoded
           SecretKey secretKeyObj = new javax.crypto.spec.SecretKeySpec(keyBytes, "HmacSHA256");  // Create a SecretKey from your byte array
           return NimbusJwtDecoder.withSecretKey(secretKeyObj).build();

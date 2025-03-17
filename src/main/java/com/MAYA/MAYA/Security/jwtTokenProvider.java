@@ -1,7 +1,6 @@
 package com.MAYA.MAYA.Security;
 
 import io.jsonwebtoken.Jwts;
-import com.sun.security.auth.UserPrincipal;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
