@@ -1,6 +1,5 @@
 package com.MAYA.MAYA.Service;
 
-import dev.langchain4j.chain.Chain;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.openai.OpenAiChatModel;

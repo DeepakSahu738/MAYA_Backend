@@ -1,21 +1,30 @@
 package com.MAYA.MAYA.Controller;
 
+import com.MAYA.MAYA.DTO.userDTO.loginUser;
 import com.MAYA.MAYA.Entity.user;
 import com.MAYA.MAYA.Repository.userRepository;
 import com.MAYA.MAYA.Service.DemoLangChainServiceImpl;
 import com.MAYA.MAYA.Service.genAi;
 import com.MAYA.MAYA.Service.demoLangChainService;
+import com.MAYA.MAYA.Security.jwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+// use this to compare existing password to new password - PasswordEncoder.matches(rawPassword, encodedPassword)
 
 @RestController
+@RequestMapping("/auth")
 public class userController {
     @Autowired
     private final genAi genAi;
@@ -30,6 +39,15 @@ public class userController {
     private userRepository userRepository;
 
     @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private jwtTokenProvider jwtTokenProvider;
+
+    @Autowired
     public userController(com.MAYA.MAYA.Service.genAi genAi, DemoLangChainServiceImpl langChainService,demoLangChainService langChainServiceNew) {
         this.genAi = genAi;
 
@@ -40,6 +58,7 @@ public class userController {
 
     @GetMapping("/getAllUsers")
     private ResponseEntity<List<user>> getAllUsers() {
+        System.out.println("yaha aaya toh tha ");
         try {
             List<user> userList = new ArrayList<>();
             userRepository.findAll().forEach(userList::add);
@@ -70,12 +89,45 @@ public class userController {
         }
     }
 
-    @PostMapping("/addUser")
+    @PostMapping("/registerUser")
     private ResponseEntity<user> adduser(@RequestBody user user1) {
 
+        String hashedPassword = passwordEncoder.encode(user1.getPassword());
+        user1.setPassword(hashedPassword);
         user user2 = userRepository.save(user1);
+        // use this to compare existing password to new password - PasswordEncoder.matches(rawPassword, encodedPassword)
+
         return new ResponseEntity<>(user2, HttpStatus.CREATED);
     }
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody loginUser loginUser) {
+//        System.out.println("yaha tak aagye url k ander tak toh aaya ");
+//        System.out.println("Username: " + loginUser.getName());
+//        System.out.println("Password: " + loginUser.getPassword());
+//        // use this to compare existing password to new password - PasswordEncoder.matches(rawPassword, encodedPassword)
+//        Authentication authentication = authenticationManager.authenticate(
+//                new UsernamePasswordAuthenticationToken(loginUser.getName(), loginUser.getPassword()));
+//        System.out.println("Authentication: " + authentication);
+//
+//        System.out.println("yaha tak aagye context holder se pehele");
+//        SecurityContextHolder.getContext().setAuthentication(authentication);
+//        System.out.println("yaha tak aagye"+"token bhi mil gya jo ye h "+jwtTokenProvider.generateToken(authentication));
+//        String token = jwtTokenProvider.generateToken(authentication);
+//        return ResponseEntity.ok(token);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginUser.getName(), loginUser.getPassword()));
+            System.out.println("Authentication: " + authentication);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String token = jwtTokenProvider.generateToken(authentication);
+            return ResponseEntity.ok(token);
+        } catch (Exception e) {
+            System.out.println("Authentication failed: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Authentication failed");
+        }
+    }
+
 
     @PutMapping("/updateUserById/{id}")
     private ResponseEntity<user> updateUser(@PathVariable long id, @RequestBody user newUser) {

@@ -26,6 +26,18 @@ public class user {
    @Column(name = "password", nullable = false)
    private String password;
 
+   @Enumerated(EnumType.STRING)
+   @Column(name = "role", nullable = false)
+   private Role role;
+
+   public Role getRole() {
+      return role;
+   }
+
+   public void setRole(Role role) {
+      this.role = role;
+   }
+
    public long getUserId() {
       return id;
    }
@@ -53,4 +65,6 @@ public class user {
    }
 
    public void setEmail(String email){this.email= email;}
+
+
 }
