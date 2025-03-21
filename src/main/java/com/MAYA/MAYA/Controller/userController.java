@@ -101,19 +101,6 @@ public class userController {
     }
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody loginUser loginUser) {
-//        System.out.println("yaha tak aagye url k ander tak toh aaya ");
-//        System.out.println("Username: " + loginUser.getName());
-//        System.out.println("Password: " + loginUser.getPassword());
-//        // use this to compare existing password to new password - PasswordEncoder.matches(rawPassword, encodedPassword)
-//        Authentication authentication = authenticationManager.authenticate(
-//                new UsernamePasswordAuthenticationToken(loginUser.getName(), loginUser.getPassword()));
-//        System.out.println("Authentication: " + authentication);
-//
-//        System.out.println("yaha tak aagye context holder se pehele");
-//        SecurityContextHolder.getContext().setAuthentication(authentication);
-//        System.out.println("yaha tak aagye"+"token bhi mil gya jo ye h "+jwtTokenProvider.generateToken(authentication));
-//        String token = jwtTokenProvider.generateToken(authentication);
-//        return ResponseEntity.ok(token);
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginUser.getName(), loginUser.getPassword()));
