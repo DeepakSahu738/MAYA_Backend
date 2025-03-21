@@ -125,7 +125,7 @@ public class userController {
 
             user updatedUser = pointeduser.get();
             updatedUser.setName(newUser.getName());
-            updatedUser.setPassword(newUser.getPassword());
+            updatedUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
             updatedUser.setEmail((newUser.getEmail()));
             user user2 = userRepository.save(updatedUser);
             return new ResponseEntity<>(user2, HttpStatus.OK);
