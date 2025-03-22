@@ -24,7 +24,7 @@ public class instaGramController {
     @Autowired
     private demoLangChainService langChainService;
     @PostMapping("/insta_one")
-    private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody ContentIdeaDTO request) {
+    private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody CombinedFieldsForChainFlowDTO request) {
         //we are doing the LangChain stuff in the service section
 
         String sessionId = UUID.randomUUID().toString();
@@ -48,7 +48,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_two")
-    private ResponseEntity<Map<String, String>> generateCaption(@RequestParam String sessionId,@RequestBody CaptionDTO request) {
+    private ResponseEntity<Map<String, String>> generateCaption(@RequestParam String sessionId,@RequestBody CombinedFieldsForChainFlowDTO request) {
 
         //we are doing the LangChain stuff in the service section
         String contentIdea = storageService.getContentIdea(sessionId);
@@ -73,7 +73,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_three")
-    private ResponseEntity<Map<String, String>> generateHashtags(@RequestBody HashtagsDTO request) {
+    private ResponseEntity<Map<String, String>> generateHashtags(@RequestBody CombinedFieldsForChainFlowDTO request) {
         List<String> generatedHashtags = new ArrayList<>();
 
         //we are doing the LangChain stuff in the service section
@@ -105,7 +105,7 @@ public class instaGramController {
 
 
     @PostMapping("/insta_four")
-    private ResponseEntity<Map<String, String>> generateDesignAndSuggestion(@RequestBody DesignDTO request) {
+    private ResponseEntity<Map<String, String>> generateDesignAndSuggestion(@RequestBody CombinedFieldsForChainFlowDTO request) {
 
         //we are doing the LangChain stuff in the service section
         try {
@@ -125,7 +125,7 @@ public class instaGramController {
 
 
     @PostMapping("/insta_five")
-    private ResponseEntity<Map<String, String>> generateStrategyForEngagement(@RequestBody EngagementDTO request) {
+    private ResponseEntity<Map<String, String>> generateStrategyForEngagement(@RequestBody CombinedFieldsForChainFlowDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
             String generateEngagementTips = instaGramService.generateEngagementStrategies(request.getContentGoal(), request.getTargetAudience());
@@ -142,7 +142,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_six")
-    private ResponseEntity<Map<String, String>> generateContentPostingTime(@RequestBody PostingTimeDTO request) {
+    private ResponseEntity<Map<String, String>> generateContentPostingTime(@RequestBody CombinedFieldsForChainFlowDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
             String generateBestPostingTime = instaGramService.suggestBestPostTime(request.getNiche(), request.getTargetAudience());

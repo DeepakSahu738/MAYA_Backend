@@ -14,27 +14,27 @@ import java.util.List;
     //@SystemMessage("You are a polite assistant")
     String chat(String userMessage);
 
-    @UserMessage("${prompts.generateContentIdeas}")
+    @UserMessage("${instaprompts.generateContentIdeas}")
     List<String>  generateContentIdeas(String contentGoal, String niche,String contentType,
                                 String trendingOrEvergreen,String targetAudience);
 
 
-    @UserMessage("${prompts.generateCaptionWithCTA}")
+    @UserMessage("${instaprompts.generateCaptionWithCTA}")
     String generateCaption(String contentIdea,String toneStyle,String callToAction);
 
 
-    @UserMessage("${prompts.suggestHashtags}")
+    @UserMessage("${instaprompts.suggestHashtags}")
     String generateHashtags(String contentIdea,String niche, List<String> keywords, String trendingOrEvergreen);
 
-    @UserMessage("${prompts.suggestDesignAndAesthetic}")
+    @UserMessage("${instaprompts.suggestDesignAndAesthetic}")
     String generateDesignAndAesthetic( String contentIdea,String niche,
                                String toneStyle,
                                String contentType);
 
-    @UserMessage("${prompts.generateEngagementStrategies}")
+    @UserMessage("${instaprompts.generateEngagementStrategies}")
     String generateEngagementStrategies(String contentIdea,String contentGoal,String targetAudience);
 
-    @UserMessage("${prompts.suggestBestPostTime}")
+    @UserMessage("${instaprompts.suggestBestPostTime}")
     String suggestBestPostTime(String contentIdea,String targetAudience,String niche);
 
 }
