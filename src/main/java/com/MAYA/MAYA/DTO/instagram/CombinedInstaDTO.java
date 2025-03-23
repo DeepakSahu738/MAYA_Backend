@@ -4,7 +4,7 @@ package com.MAYA.MAYA.DTO.instagram;
 
 import java.util.List;
 
-public class CombinedFieldsForChainFlowDTO {
+public class CombinedInstaDTO {
 
     private String contentGoal;
     private String toneStyle;

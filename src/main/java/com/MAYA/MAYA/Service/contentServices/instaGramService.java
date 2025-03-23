@@ -1,4 +1,4 @@
-package com.MAYA.MAYA.Service;
+package com.MAYA.MAYA.Service.contentServices;
 
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;

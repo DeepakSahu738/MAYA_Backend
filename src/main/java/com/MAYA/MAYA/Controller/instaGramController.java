@@ -3,7 +3,7 @@ package com.MAYA.MAYA.Controller;
 import com.MAYA.MAYA.DTO.instagram.*;
 import com.MAYA.MAYA.Service.TemporaryStorageService;
 import com.MAYA.MAYA.Service.demoLangChainService;
-import com.MAYA.MAYA.Service.instaGramService;
+import com.MAYA.MAYA.Service.contentServices.instaGramService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/content")
+@RequestMapping("/api/content/instagram")
 @CrossOrigin(origins = "http://localhost:9090")
 public class instaGramController {
 
@@ -24,7 +24,7 @@ public class instaGramController {
     @Autowired
     private demoLangChainService langChainService;
     @PostMapping("/insta_one")
-    private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody CombinedFieldsForChainFlowDTO request) {
+    private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody CombinedInstaDTO request) {
         //we are doing the LangChain stuff in the service section
 
         String sessionId = UUID.randomUUID().toString();
@@ -48,7 +48,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_two")
-    private ResponseEntity<Map<String, String>> generateCaption(@RequestParam String sessionId,@RequestBody CombinedFieldsForChainFlowDTO request) {
+    private ResponseEntity<Map<String, String>> generateCaption(@RequestParam String sessionId,@RequestBody CombinedInstaDTO request) {
 
         //we are doing the LangChain stuff in the service section
         String contentIdea = storageService.getContentIdea(sessionId);
@@ -73,7 +73,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_three")
-    private ResponseEntity<Map<String, String>> generateHashtags(@RequestBody CombinedFieldsForChainFlowDTO request) {
+    private ResponseEntity<Map<String, String>> generateHashtags(@RequestBody CombinedInstaDTO request) {
         List<String> generatedHashtags = new ArrayList<>();
 
         //we are doing the LangChain stuff in the service section
@@ -89,23 +89,12 @@ public class instaGramController {
             response.put("ERROR", " Error: Unable to generate content ideas. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-//        for (String keyword : request.getKeywords()) {
-//            generatedHashtags.add("#" + keyword.replace(" ", "").toLowerCase());
-//        }
-//        generatedHashtags.add("#" + request.getNiche().replace(" ", "").toLowerCase());
-//
-//        if ("Trending".equalsIgnoreCase(request.getTrendingOrEvergreen())) {
-//            generatedHashtags.add("#trending");
-//        } else {
-//            generatedHashtags.add("#evergreencontent");
-//        }
-
         // Returning a JSON response / not using the instaService currently will integrate when we integrate Langchain AI
     }
 
 
     @PostMapping("/insta_four")
-    private ResponseEntity<Map<String, String>> generateDesignAndSuggestion(@RequestBody CombinedFieldsForChainFlowDTO request) {
+    private ResponseEntity<Map<String, String>> generateDesignAndSuggestion(@RequestBody CombinedInstaDTO request) {
 
         //we are doing the LangChain stuff in the service section
         try {
@@ -125,7 +114,7 @@ public class instaGramController {
 
 
     @PostMapping("/insta_five")
-    private ResponseEntity<Map<String, String>> generateStrategyForEngagement(@RequestBody CombinedFieldsForChainFlowDTO request) {
+    private ResponseEntity<Map<String, String>> generateStrategyForEngagement(@RequestBody CombinedInstaDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
             String generateEngagementTips = instaGramService.generateEngagementStrategies(request.getContentGoal(), request.getTargetAudience());
@@ -142,7 +131,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_six")
-    private ResponseEntity<Map<String, String>> generateContentPostingTime(@RequestBody CombinedFieldsForChainFlowDTO request) {
+    private ResponseEntity<Map<String, String>> generateContentPostingTime(@RequestBody CombinedInstaDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
             String generateBestPostingTime = instaGramService.suggestBestPostTime(request.getNiche(), request.getTargetAudience());
@@ -159,7 +148,7 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_chain")
-    private ResponseEntity<Map<String, String>> generateContentChainedVersion(@RequestBody CombinedFieldsForChainFlowDTO request)
+    private ResponseEntity<Map<String, String>> generateContentChainedVersion(@RequestBody CombinedInstaDTO request)
     {
         try {
             List<String>  contentIdea = langChainService.generateContentIdeas(
