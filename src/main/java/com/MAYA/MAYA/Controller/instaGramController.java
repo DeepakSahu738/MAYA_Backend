@@ -2,7 +2,7 @@ package com.MAYA.MAYA.Controller;
 
 import com.MAYA.MAYA.DTO.instagram.*;
 import com.MAYA.MAYA.Service.TemporaryStorageService;
-import com.MAYA.MAYA.Service.demoLangChainService;
+import com.MAYA.MAYA.Service.contentServices.LangChainAiServiceInstagram;
 import com.MAYA.MAYA.Service.contentServices.instaGramService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,7 +22,7 @@ public class instaGramController {
     @Autowired
     private TemporaryStorageService storageService;
     @Autowired
-    private demoLangChainService langChainService;
+    private LangChainAiServiceInstagram langChainService;
     @PostMapping("/insta_one")
     private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody CombinedInstaDTO request) {
         //we are doing the LangChain stuff in the service section

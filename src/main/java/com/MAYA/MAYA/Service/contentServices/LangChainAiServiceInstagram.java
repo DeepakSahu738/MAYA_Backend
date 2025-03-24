@@ -1,15 +1,12 @@
-package com.MAYA.MAYA.Service;
+package com.MAYA.MAYA.Service.contentServices;
 
-import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.spring.AiService;
-import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @AiService
- public interface demoLangChainService {
+ public interface LangChainAiServiceInstagram {
 
     //@SystemMessage("You are a polite assistant")
     String chat(String userMessage);

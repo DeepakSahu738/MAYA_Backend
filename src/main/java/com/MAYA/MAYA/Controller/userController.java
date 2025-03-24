@@ -5,7 +5,7 @@ import com.MAYA.MAYA.Entity.user;
 import com.MAYA.MAYA.Repository.userRepository;
 import com.MAYA.MAYA.Service.DemoLangChainServiceImpl;
 import com.MAYA.MAYA.Service.genAi;
-import com.MAYA.MAYA.Service.demoLangChainService;
+import com.MAYA.MAYA.Service.contentServices.LangChainAiServiceInstagram;
 import com.MAYA.MAYA.Security.jwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,7 +33,7 @@ public class userController {
     private final DemoLangChainServiceImpl langChainService;
 
     @Autowired
-    private final demoLangChainService langChainServiceNew;
+    private final LangChainAiServiceInstagram langChainServiceNew;
 
     @Autowired
     private userRepository userRepository;
@@ -48,7 +48,7 @@ public class userController {
     private jwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    public userController(com.MAYA.MAYA.Service.genAi genAi, DemoLangChainServiceImpl langChainService,demoLangChainService langChainServiceNew) {
+    public userController(com.MAYA.MAYA.Service.genAi genAi, DemoLangChainServiceImpl langChainService, LangChainAiServiceInstagram langChainServiceNew) {
         this.genAi = genAi;
 
         this.langChainService = langChainService;
