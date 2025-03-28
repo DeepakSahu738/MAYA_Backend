@@ -17,7 +17,7 @@ public interface LangChainAiServiceFacebook {
 
 
     @UserMessage("${FBPrompts.suggestHashtags}")
-    String suggestHashtags(String topicsAndKeywords);
+    String suggestHashtags(List<String> topicsAndKeywords);
 
     @UserMessage("${FBPrompts.suggestEngagementFeatures}")
     String suggestEngagementFeatures(String postType);
