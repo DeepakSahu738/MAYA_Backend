@@ -15,12 +15,12 @@ public interface LangChainAiServiceSnapchat {
 
     @UserMessage("${SCPrompts.generateTextOverlays}")
     String generateTextOverlays(String storyType,String toneStyle,String niche,String callToAction,
-                                String  keywords , String targetAudience);
+                                List<String>stickersAndFilters , String targetAudience);
 
 
     @UserMessage("${SCPrompts.suggestTrendingLensesAndFilters}")
     String suggestTrendingLensesAndFilters(String niche,String trendingOrEvergreen,String storyType,
-                                           String targetAudience, String stickersAndFilters);
+                                           String targetAudience, List<String> stickersAndFilters);
 
     @UserMessage("${SCPrompts.suggestEngagementFeatures}")
     String suggestEngagementFeatures(String toneStyle,String storyType,String niche);

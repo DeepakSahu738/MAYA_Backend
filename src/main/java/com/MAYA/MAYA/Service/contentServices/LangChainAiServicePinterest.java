@@ -14,7 +14,7 @@ public interface LangChainAiServicePinterest {
 
 
     @UserMessage("${PinPrompts.generateOptimizedTitleAndDescription}")
-    String generateOptimizedTitleAndDescription(String searchKeywords,String callToAction);
+    String generateOptimizedTitleAndDescription(List<String> searchKeywords,String callToAction);
 
 
     @UserMessage("${PinPrompts.suggestHashtag}")

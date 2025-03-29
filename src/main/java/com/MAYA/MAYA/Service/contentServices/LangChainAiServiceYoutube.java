@@ -14,11 +14,11 @@ public interface LangChainAiServiceYoutube {
 
 
     @UserMessage("${YTPrompts.generateSEO}")
-    String generateSEO(String keywordsAndSeoTags,String callToAction);
+    String generateSEO(List<String> keywordsAndSeoTags,String callToAction);
 
 
     @UserMessage("${YTPrompts.suggestHashtag}")
-    String suggestHashtag(String keywordsAndSeoTags,String niche,String trendingOrEvergreen);
+    String suggestHashtag(List<String> keywordsAndSeoTags,String niche,String trendingOrEvergreen);
 
     @UserMessage("${YTPrompts.suggestThumbnailAndBranding}")
     String suggestThumbnailAndBranding(String toneStyle,String niche,String videoGoal);

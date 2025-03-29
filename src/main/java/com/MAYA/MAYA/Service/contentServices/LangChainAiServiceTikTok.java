@@ -19,7 +19,7 @@ public interface LangChainAiServiceTikTok {
 
     @UserMessage("${TTPrompts.suggestHashtag}")
     String suggestHashtag(String videoFormat,String trendingOrEvergreen,String niche,
-                                           String targetAudience, String stickersAndFilters);
+                                           String targetAudience);
 
     @UserMessage("${TTPrompts.suggestMusicAndEffect}")
     String suggestMusicAndEffect(String toneStyle,String videoFormat,String niche);

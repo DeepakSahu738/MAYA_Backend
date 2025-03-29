@@ -1,7 +1,7 @@
 package com.MAYA.MAYA.Controller;
 
-import com.MAYA.MAYA.DTO.facebook.FacebookPostDTO;
-import com.MAYA.MAYA.Service.contentServices.LangChainAiServiceFacebook;
+import com.MAYA.MAYA.DTO.pinterest.PinterestPostDTO;
+import com.MAYA.MAYA.Service.contentServices.LangChainAiServicePinterest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,96 +10,92 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/content/facebook")
+@RequestMapping("/api/content/pinterest")
 @CrossOrigin(origins = "http://localhost:9090")
-public class facebookController {
-
+public class pinterestController {
     @Autowired
-    private LangChainAiServiceFacebook langChainAiServiceFacebook ;
-    @PostMapping("/fb_one")
-    private ResponseEntity<Map<String, List<String>>> generateContentIdea(@RequestBody FacebookPostDTO request) {
+    private LangChainAiServicePinterest langChainAiServicePinterest ;
+    @PostMapping("/pin_one")
+    private ResponseEntity<Map<String, List<String>>> generatePinIdeas(@RequestBody PinterestPostDTO request) {
         //we are doing the LangChain stuff in the service section
         String sessionId = UUID.randomUUID().toString();
         try {
-            List<String> generatePostIdeas = langChainAiServiceFacebook.generatePostIdeas(request.getPostGoal(),request.getNiche());
-//            String contentIdea = generatePostIdeas;
-//            storageService.storeContentIdea(sessionId,contentIdea);
+            List<String> generatePinIdeas = langChainAiServicePinterest.generatePinIdeas(request.getPinGoal(),request.getContentType(),request.getPinType(),request.getTargetAudience());
             Map<String, List<String>> response = new HashMap<>();
-              response.put("PostIdeas", generatePostIdeas);
-//            response.put("sessionId", sessionId);
+            response.put("PinIdeas", generatePinIdeas);
             return  new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             Map<String, List<String>> response = new HashMap<>();
-            response.put("ERROR", Collections.singletonList("Error: Unable to generate Post ideas. Please try again later."));
+            response.put("ERROR", Collections.singletonList("Error: Unable to generate Pin Ideas. Please try again later."));
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    @PostMapping("/fb_two")
-    private ResponseEntity<Map<String, String>> generateHeadlinesAndDes(@RequestBody FacebookPostDTO request) {
+    @PostMapping("/pin_two")
+    private ResponseEntity<Map<String, String>> generateOptimizedTitleAndDescription(@RequestBody PinterestPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String generateHeadlinesAndDes = langChainAiServiceFacebook.generateHeadlinesAndDes(request.getPostType(),request.getToneAndStyle(),request.getTargetAudience());
+            String generateOptimizedTitleAndDescription = langChainAiServicePinterest.generateOptimizedTitleAndDescription(request.getSearchKeywords(),request.getCallToAction());
             Map<String, String> response = new HashMap<>();
-            response.put("HeadlinesAndDes", generateHeadlinesAndDes);
+            response.put("OptimizedTitleAndDescription", generateOptimizedTitleAndDescription);
             return  new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             Map<String, String> response = new HashMap<>();
-            response.put("ERROR", "Error: Unable to generate HeadlinesAndDes. Please try again later.");
+            response.put("ERROR", "Error: Unable to generate Optimized Title And Description. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    @PostMapping("/fb_three")
-    private ResponseEntity<Map<String, String>> suggestHashtags(@RequestBody FacebookPostDTO request) {
+    @PostMapping("/pin_three")
+    private ResponseEntity<Map<String, String>> suggestHashtag(@RequestBody PinterestPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String suggestHashtags = langChainAiServiceFacebook.suggestHashtags(request.getTopicsAndKeywords());
+            String suggestHashtag = langChainAiServicePinterest.suggestHashtag(request.getNiche(),request.getPinGoal());
             Map<String, String> response = new HashMap<>();
-            response.put("Hashtags", suggestHashtags);
+            response.put("Hashtag", suggestHashtag);
             return  new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             Map<String, String> response = new HashMap<>();
-            response.put("ERROR","Error: Unable to generate Hashtags. Please try again later.");
+            response.put("ERROR","Error: Unable to generate Hashtag. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    @PostMapping("/fb_four")
-    private ResponseEntity<Map<String, String>> suggestEngagementFeatures(@RequestBody FacebookPostDTO request) {
+    @PostMapping("/pin_four")
+    private ResponseEntity<Map<String, String>> suggestAestheticAndDesignTips(@RequestBody PinterestPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String suggestEngagementFeatures = langChainAiServiceFacebook.suggestEngagementFeatures(request.getPostType());
+            String suggestAestheticAndDesignTips = langChainAiServicePinterest.suggestAestheticAndDesignTips(request.getToneAndStyle(),request.getPinType());
             Map<String, String> response = new HashMap<>();
-            response.put("EngagementFeatures", suggestEngagementFeatures);
+            response.put("AestheticAndDesignTips", suggestAestheticAndDesignTips);
             return  new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             Map<String, String> response = new HashMap<>();
-            response.put("ERROR", "Error: Unable to generate EngagementFeatures. Please try again later.");
+            response.put("ERROR", "Error: Unable to generate AestheticAndDesignTips. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    @PostMapping("/fb_five")
-    private ResponseEntity<Map<String, String>> generateBoostingTips(@RequestBody FacebookPostDTO request) {
+    @PostMapping("/pin_five")
+    private ResponseEntity<Map<String, String>> generateEngagement(@RequestBody PinterestPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String generateBoostingTips = langChainAiServiceFacebook.generateBoostingTips();
+            String generateEngagement = langChainAiServicePinterest.generateEngagement(request.getNiche(),request.getCallToAction());
             Map<String, String> response = new HashMap<>();
-            response.put("BoostingTips", generateBoostingTips);
+            response.put("Engagement", generateEngagement);
             return  new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             Map<String, String> response = new HashMap<>();
-            response.put("ERROR", "Error: Unable to generate BoostingTips. Please try again later.");
+            response.put("ERROR", "Error: Unable to generate Engagement. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    @PostMapping("/fb_six")
-    private ResponseEntity<Map<String, String>> suggestBestPostTime(@RequestBody FacebookPostDTO request) {
+    @PostMapping("/pin_six")
+    private ResponseEntity<Map<String, String>> suggestBestPostTime(@RequestBody PinterestPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String suggestBestPostTime = langChainAiServiceFacebook.suggestBestPostTime(request.getTargetAudience());
+            String suggestBestPostTime = langChainAiServicePinterest.suggestBestPostTime(request.getTargetAudience());
             Map<String, String> response = new HashMap<>();
             response.put("BestPostTime", suggestBestPostTime);
             return  new ResponseEntity<>(response, HttpStatus.OK);
@@ -109,4 +105,6 @@ public class facebookController {
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+
 }

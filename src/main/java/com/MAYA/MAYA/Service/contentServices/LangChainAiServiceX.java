@@ -14,12 +14,12 @@ public interface LangChainAiServiceX {
 
 
     @UserMessage("${XPrompts.generateOptimizedTweetCopy}")
-    String generateOptimizedTweetCopy(String toneStyle,String hashtagsAndMentions,String callToAction,
+    String generateOptimizedTweetCopy(String toneStyle,List<String> hashtagsAndMentions,String callToAction,
                                       String targetAudience);
 
 
     @UserMessage("${XPrompts.suggestHashtag}")
-    String suggestHashtag(String hashtagsAndMentions,String niche,String trendingOrEvergreen);
+    String suggestHashtag(List<String> hashtagsAndMentions,String niche,String trendingOrEvergreen);
 
     @UserMessage("${XPrompts.suggestVisualAndGIFSuggestions}")
     String suggestVisualAndGIFSuggestions(String tweetType,String toneStyle,String niche,String targetAudience);
