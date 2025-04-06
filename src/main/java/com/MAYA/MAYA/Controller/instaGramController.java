@@ -4,6 +4,7 @@ import com.MAYA.MAYA.DTO.instagram.*;
 import com.MAYA.MAYA.Service.TemporaryStorageService;
 import com.MAYA.MAYA.Service.contentServices.LangChainAiServiceInstagram;
 import com.MAYA.MAYA.Service.contentServices.instaGramService;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,29 +21,38 @@ public class instaGramController {
     @Autowired
     private instaGramService instaGramService;
     @Autowired
+    private OpenAiChatModel OpenAiChatModel;
+    @Autowired
     private TemporaryStorageService storageService;
     @Autowired
     private LangChainAiServiceInstagram langChainService;
     @PostMapping("/insta_one")
-    private ResponseEntity<Map<String, String>> generateContentIdea(@RequestBody CombinedInstaDTO request) {
+    private ResponseEntity<Map<String, ResponsePOJOInstaContentIdeaWRAPPER>> generateContentIdea(@RequestBody CombinedInstaDTO request) {
         //we are doing the LangChain stuff in the service section
 
         String sessionId = UUID.randomUUID().toString();
+        //System.out.println("entered in the call");
 
         try {
-            String generateCoreIdea = instaGramService.generateContentIdeas(request.getContentGoal(),request.getNiche(),request.getContentType()
-                    ,request.getTrendingOrEvergreen(),request.getTargetAudience());
-            String contentIdea = generateCoreIdea;
-            storageService.storeContentIdea(sessionId,contentIdea);
-            Map<String, String> response = new HashMap<>();
-            response.put("contentIdea", generateCoreIdea);
-            response.put("sessionId", sessionId);
+            //System.out.println("entered in the try inside the call");
+            ResponsePOJOInstaContentIdeaWRAPPER generateCoreIdea = langChainService.generateContentIdeas(request.getContentGoal(),request.getNiche(),request.getContentType()
+                      ,request.getTrendingOrEvergreen(),request.getTargetAudience());
+            ResponsePOJOInstaContentIdeaWRAPPER contentIdea = generateCoreIdea;
+
+            storageService.storeContentIdea(sessionId,contentIdea.getContentIdeas().get(0).getContentIdea());
+            Map<String, ResponsePOJOInstaContentIdeaWRAPPER> response = new HashMap<>();
+            response.put("contentIdeaData", generateCoreIdea);
+            //response.put("sessionId", sessionId);
             return  new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (Exception e) {
-
-            Map<String, String> response = new HashMap<>();
-            response.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
+            System.out.println("This is the exception"+e.getMessage());
+            Map<String, ResponsePOJOInstaContentIdeaWRAPPER> response = new HashMap<>();
+            ResponsePOJOInstaContentIdea error = new ResponsePOJOInstaContentIdea();
+            error.setContentIdea("Error: Unable to generate content ideas. Please try again later.");
+            ResponsePOJOInstaContentIdeaWRAPPER errorList = new ResponsePOJOInstaContentIdeaWRAPPER();
+            errorList.setContentIdeas((List<ResponsePOJOInstaContentIdea>) error);
+            response.put("ERROR",  errorList);
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -65,6 +75,7 @@ public class instaGramController {
             return  new ResponseEntity<>(response, HttpStatus.OK);
         }
         catch (Exception e){
+            System.out.println("This is the exception"+e.getMessage());
             Map<String, String> response = new HashMap<>();
             response.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -85,6 +96,7 @@ public class instaGramController {
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         catch (Exception e){
+            System.out.println("This is the exception"+e.getMessage());
             Map<String, String> response = new HashMap<>();
             response.put("ERROR", " Error: Unable to generate content ideas. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -105,6 +117,7 @@ public class instaGramController {
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         catch (Exception e) {
+            System.out.println("This is the exception"+e.getMessage());
             // Returning a JSON response not using the instaService currently will integrate when we integrate Langchain AI
             Map<String, String> response = new HashMap<>();
             response.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
@@ -124,6 +137,7 @@ public class instaGramController {
         }
         // Returning a JSON response
         catch (Exception e) {
+            System.out.println("This is the exception"+e.getMessage());
             Map<String, String> response = new HashMap<>();
             response.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -141,6 +155,7 @@ public class instaGramController {
         }
         // Returning a JSON response
         catch (Exception e){
+            System.out.println("This is the exception"+e.getMessage());
             Map<String, String> response = new HashMap<>();
             response.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -148,10 +163,11 @@ public class instaGramController {
     }
 
     @PostMapping("/insta_chain")
-    private ResponseEntity<Map<String, String>> generateContentChainedVersion(@RequestBody CombinedInstaDTO request)
+    private ResponseEntity<Map<String, ResponsePOJOChainIdealSuggestion>> generateContentChainedVersion(@RequestBody CombinedInstaDTO request)
     {
+        ResponsePOJOChainIdealSuggestion responsePOJOChainIdealSuggestion = new ResponsePOJOChainIdealSuggestion();
         try {
-            List<String>  contentIdea = langChainService.generateContentIdeas(
+            ResponsePOJOInstaContentIdeaWRAPPER  contentIdea = langChainService.generateContentIdeas(
                     request.getContentGoal(),
                     request.getNiche(),
                     request.getContentType(),
@@ -160,24 +176,25 @@ public class instaGramController {
             );
             System.out.println("Generated Content Idea: " + contentIdea);
 
-            String response =contentIdea.stream().map(idea->
-            {
+            //ResponsePOJOInstaContentIdea  idea = contentIdea.getContentIdeas().get(0); // Take the first content idea
+
+            ResponsePOJOInstaContentIdea idea = contentIdea.getContentIdeas().get(0);
                 // Step 2 generate caption based on the content idea
                 String caption = langChainService.generateCaption(
-                        idea,
+                        idea.getContentIdea(),
                         request.getToneStyle(),
                         request.getCallToAction()
                 );
 
                 // Step 3: Generate Hashtags based on inputs
-                String hashtags = langChainService.generateHashtags(idea,
+                String hashtags = langChainService.generateHashtags(idea.getContentIdea(),
                         request.getNiche(),
                         request.getKeywords(),
                         request.getTrendingOrEvergreen()
                 );
                 // Step 4 generate Design And Aesthetic
 
-                String dAndA = langChainService.generateDesignAndAesthetic(idea,
+                String dAndA = langChainService.generateDesignAndAesthetic(idea.getContentIdea(),
                         request.getNiche(),
                         request.getToneStyle(),
                         request.getContentGoal()
@@ -185,40 +202,42 @@ public class instaGramController {
 
                 //Step 5 generate Engagement Strategies
 
-                String EngagementStrategies = langChainService.generateEngagementStrategies(idea,
+                String EngagementStrategies = langChainService.generateEngagementStrategies(idea.getContentIdea(),
                         request.getContentGoal(),
                         request.getTargetAudience()
                 );
 
                 //Step 6 generate time to post
 
-                String TimeToPost = langChainService.suggestBestPostTime(idea,
+                String TimeToPost = langChainService.suggestBestPostTime(idea.getContentIdea(),
                         request.getTargetAudience(),
                         request.getNiche()
                 );
-                return "Content Idea:\n" + idea +
-                        "\n\nCaption:\n" + caption +
-                        "\n\nHashtags:\n" + hashtags +
-                        "dAndA:\n" + dAndA +
-                        "\n\nEngagementStrategies:\n" + EngagementStrategies +
-                        "\n\nTimeToPost:\n" + TimeToPost +
+                responsePOJOChainIdealSuggestion.setContentIdea(idea.getContentIdea());
+                responsePOJOChainIdealSuggestion.setScript(idea.getScript());
+                responsePOJOChainIdealSuggestion.setWhyThisWorks(idea.getWhyThisWorks());
+                responsePOJOChainIdealSuggestion.setCaption(caption);
+                responsePOJOChainIdealSuggestion.setHashtags(hashtags);
+                responsePOJOChainIdealSuggestion.setDesignAndAesthetic(dAndA);
+                responsePOJOChainIdealSuggestion.setEngagementStrategies(EngagementStrategies);
+                responsePOJOChainIdealSuggestion.setTimeToPost(TimeToPost);
+               // return responsePOJOChainIdealSuggestion;
 
-                        "\n----------------------\n";
-
-            }).collect(Collectors.joining("\n"));
-            Map<String, String> responsereturned = new HashMap<>();
-            responsereturned.put("contentAdvice", response);
+            Map<String, ResponsePOJOChainIdealSuggestion> responsereturned = new HashMap<>();
+            responsereturned.put("contentAdvice", responsePOJOChainIdealSuggestion);
             return new ResponseEntity<>(responsereturned, HttpStatus.OK);
 
         }
         // Returning a JSON response
         catch (Exception e){
-            Map<String, String> responsereturnedError = new HashMap<>();
-            responsereturnedError.put("ERROR", "Error: Unable to generate content ideas. Please try again later.");
+            System.out.println("This is the exception"+e.getMessage());
+            Map<String, ResponsePOJOChainIdealSuggestion> responsereturnedError = new HashMap<>();
+            responsePOJOChainIdealSuggestion.setContentIdea("Error: Unable to generate content ideas. Please try again later.");
+            responsereturnedError.put("ERROR", responsePOJOChainIdealSuggestion);
             return  new ResponseEntity<>(responsereturnedError, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-    }
+      }
 
 
 }

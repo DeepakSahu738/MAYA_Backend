@@ -1,6 +1,7 @@
 package com.MAYA.MAYA.Service.contentServices;
 
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import dev.langchain4j.service.spring.AiService;
 
 import java.util.List;
@@ -9,25 +10,47 @@ import java.util.List;
 public interface LangChainAiServiceSnapchat {
 
     @UserMessage("${SCPrompts.generateStoryIdeas}")
-    List<String> generateStoryIdeas(String snapGoal, String niche,String storyType,
-                                    String toneStyle,String callToAction,String trendingOrEvergreen);
-
+    List<String> generateStoryIdeas(
+            @V("snapGoal") String snapGoal,
+            @V("niche") String niche,
+            @V("storyType") String storyType,
+            @V("toneStyle") String toneStyle,
+            @V("callToAction") String callToAction,
+            @V("trendingOrEvergreen") String trendingOrEvergreen
+    );
 
     @UserMessage("${SCPrompts.generateTextOverlays}")
-    String generateTextOverlays(String storyType,String toneStyle,String niche,String callToAction,
-                                List<String>stickersAndFilters , String targetAudience);
-
+    String generateTextOverlays(
+            @V("storyType") String storyType,
+            @V("toneStyle") String toneStyle,
+            @V("niche") String niche,
+            @V("callToAction") String callToAction,
+            @V("stickersAndFilters") List<String> stickersAndFilters,
+            @V("targetAudience") String targetAudience
+    );
 
     @UserMessage("${SCPrompts.suggestTrendingLensesAndFilters}")
-    String suggestTrendingLensesAndFilters(String niche,String trendingOrEvergreen,String storyType,
-                                           String targetAudience, List<String> stickersAndFilters);
+    String suggestTrendingLensesAndFilters(
+            @V("niche") String niche,
+            @V("trendingOrEvergreen") String trendingOrEvergreen,
+            @V("storyType") String storyType,
+            @V("targetAudience") String targetAudience,
+            @V("stickersAndFilters") List<String> stickersAndFilters
+    );
 
     @UserMessage("${SCPrompts.suggestEngagementFeatures}")
-    String suggestEngagementFeatures(String toneStyle,String storyType,String niche);
+    String suggestEngagementFeatures(
+            @V("toneStyle") String toneStyle,
+            @V("storyType") String storyType,
+            @V("niche") String niche
+    );
 
     @UserMessage("${SCPrompts.generateBoostingTips}")
-    String generateBoostingTips();
+    String generateBoostingTips(); // No params — no @V needed
 
     @UserMessage("${SCPrompts.suggestBestPostTime}")
-    String suggestBestPostTime(String targetAudience,String storyType);
+    String suggestBestPostTime(
+            @V("targetAudience") String targetAudience,
+            @V("storyType") String storyType
+    );
 }

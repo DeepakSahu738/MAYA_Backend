@@ -1,6 +1,7 @@
 package com.MAYA.MAYA.Service.contentServices;
 
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import dev.langchain4j.service.spring.AiService;
 
 import java.util.List;
@@ -9,23 +10,43 @@ import java.util.List;
 public interface LangChainAiServiceYoutube {
 
     @UserMessage("${YTPrompts.generateVideoIdeas}")
-    List<String> generateVideoIdeas(String videoGoal, String niche, String videoType,
-                                    String targetAudience, String trendingOrEvergreen);
-
+    List<String> generateVideoIdeas(
+            @V("videoGoal") String videoGoal,
+            @V("niche") String niche,
+            @V("videoType") String videoType,
+            @V("targetAudience") String targetAudience,
+            @V("trendingOrEvergreen") String trendingOrEvergreen
+    );
 
     @UserMessage("${YTPrompts.generateSEO}")
-    String generateSEO(List<String> keywordsAndSeoTags,String callToAction);
-
+    String generateSEO(
+            @V("keywordsAndSeoTags") List<String> keywordsAndSeoTags,
+            @V("callToAction") String callToAction
+    );
 
     @UserMessage("${YTPrompts.suggestHashtag}")
-    String suggestHashtag(List<String> keywordsAndSeoTags,String niche,String trendingOrEvergreen);
+    String suggestHashtag(
+            @V("keywordsAndSeoTags") List<String> keywordsAndSeoTags,
+            @V("niche") String niche,
+            @V("trendingOrEvergreen") String trendingOrEvergreen
+    );
 
     @UserMessage("${YTPrompts.suggestThumbnailAndBranding}")
-    String suggestThumbnailAndBranding(String toneStyle,String niche,String videoGoal);
+    String suggestThumbnailAndBranding(
+            @V("toneStyle") String toneStyle,
+            @V("niche") String niche,
+            @V("videoGoal") String videoGoal
+    );
 
     @UserMessage("${YTPrompts.generateEngagement}")
-    String generateEngagement(String targetAudience, String niche);
+    String generateEngagement(
+            @V("targetAudience") String targetAudience,
+            @V("niche") String niche
+    );
 
     @UserMessage("${YTPrompts.suggestBestPostTime}")
-    String suggestBestPostTime(String targetAudience);
+    String suggestBestPostTime(
+            @V("targetAudience") String targetAudience
+    );
+
 }

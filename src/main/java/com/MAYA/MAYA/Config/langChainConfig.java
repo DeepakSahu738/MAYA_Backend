@@ -43,10 +43,10 @@ public class langChainConfig {
 //    }
 
 
-    @Bean
-    ChatMemory chatMemory() {
-        return MessageWindowChatMemory.withMaxMessages(10);
-    }
+//    @Bean
+//    ChatMemory chatMemory() {
+//        return MessageWindowChatMemory.withMaxMessages(10);
+//    }
     @Bean
     public ChatModelListener chatModelListener() {
         return new ChatModelListener() {
