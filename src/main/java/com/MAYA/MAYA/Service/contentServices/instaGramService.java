@@ -21,7 +21,7 @@ public class instaGramService {
     public String generateContentIdeas(String contentGoal, String niche,String contentType,
      String trendingOrEvergreen,String targetAudience){
         PromptTemplate template = PromptTemplate.from(
-                "Create 5 content ideas for '{{contentGoal}}' in the '{{niche}}' niche." +
+                "Create 15 content ideas for '{{contentGoal}}' in the '{{niche}}' niche." +
                         " The content type is '{{contentType}}', targeting '{{targetAudience}}'." +
                         " Focus on making the content '{{trendingOrEvergreen}}' and relevant to the audience's current " +
                         "interests and challenges."
@@ -59,7 +59,7 @@ public class instaGramService {
     public  String suggestHashtags(String niche, List<String> keywords, String trendingOrEvergreen)
     {
         PromptTemplate template = PromptTemplate.from(
-                "Provide 10 instagram hashtags for a '{{niche}}' post about '{{keywords}]'." +
+                "Provide 30 instagram hashtags for a '{{niche}}' post about '{{keywords}]'." +
                         " Focus on using hashtags that resonate with '{{trendingOrEvergreen}}' and include both trending and niche-specific options." +
                         "Optimize for both engagement and discoverability"
         );

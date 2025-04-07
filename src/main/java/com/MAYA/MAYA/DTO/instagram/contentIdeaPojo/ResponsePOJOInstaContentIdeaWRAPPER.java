@@ -1,4 +1,4 @@
-package com.MAYA.MAYA.DTO.instagram;
+package com.MAYA.MAYA.DTO.instagram.contentIdeaPojo;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.MAYA.MAYA.DTO.instagram;
+package com.MAYA.MAYA.DTO.instagram.contentIdeaPojo;
 
 public class ResponsePOJOInstaContentIdea {
     private String contentIdea;

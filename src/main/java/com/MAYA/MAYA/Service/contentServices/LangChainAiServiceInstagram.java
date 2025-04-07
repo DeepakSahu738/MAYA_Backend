@@ -1,8 +1,11 @@
 package com.MAYA.MAYA.Service.contentServices;
 
-import com.MAYA.MAYA.DTO.instagram.ResponsePOJOInstaContentIdea;
-import com.MAYA.MAYA.DTO.instagram.ResponsePOJOInstaContentIdeaWRAPPER;
-import dev.langchain4j.service.SystemMessage;
+import com.MAYA.MAYA.DTO.instagram.captionPojo.ResponsePOJOInstaCaptionWRAPPER;
+import com.MAYA.MAYA.DTO.instagram.contentIdeaPojo.ResponsePOJOInstaContentIdeaWRAPPER;
+import com.MAYA.MAYA.DTO.instagram.designAndAestheticPojo.ResponsePOJOInstaDesignAndAestheticWRAPPER;
+import com.MAYA.MAYA.DTO.instagram.engagementPojo.ResponsePOJOInstaEngagementStrategiesWRAPPER;
+import com.MAYA.MAYA.DTO.instagram.hashtagsPojo.ResponsePOJOInstaHashtagsWRAPPER;
+import com.MAYA.MAYA.DTO.instagram.postingTimePojo.ResponsePOJOInstaBestPostingTimeWRAPPER;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.spring.AiService;
@@ -23,38 +26,34 @@ import java.util.List;
                                                              @V("targetAudience") String targetAudience);
 
    @UserMessage("${instaprompts.generateCaptionWithCTA}")
-   String generateCaption(
-           @V("contentIdea") String contentIdea,
+   ResponsePOJOInstaCaptionWRAPPER generateCaption(
+           @V("niche") String niche,
            @V("toneStyle") String toneStyle,
            @V("callToAction") String callToAction
    );
 
    @UserMessage("${instaprompts.suggestHashtags}")
-   String generateHashtags(
-           @V("contentIdea") String contentIdea,
+   ResponsePOJOInstaHashtagsWRAPPER generateHashtags(
            @V("niche") String niche,
            @V("keywords") List<String> keywords,
            @V("trendingOrEvergreen") String trendingOrEvergreen
    );
 
    @UserMessage("${instaprompts.suggestDesignAndAesthetic}")
-   String generateDesignAndAesthetic(
-           @V("contentIdea") String contentIdea,
+   ResponsePOJOInstaDesignAndAestheticWRAPPER generateDesignAndAesthetic(
            @V("niche") String niche,
            @V("toneStyle") String toneStyle,
            @V("contentType") String contentType
    );
 
    @UserMessage("${instaprompts.generateEngagementStrategies}")
-   String generateEngagementStrategies(
-           @V("contentIdea") String contentIdea,
+   ResponsePOJOInstaEngagementStrategiesWRAPPER generateEngagementStrategies(
            @V("contentGoal") String contentGoal,
            @V("targetAudience") String targetAudience
    );
 
    @UserMessage("${instaprompts.suggestBestPostTime}")
-   String suggestBestPostTime(
-           @V("contentIdea") String contentIdea,
+   ResponsePOJOInstaBestPostingTimeWRAPPER suggestBestPostTime(
            @V("targetAudience") String targetAudience,
            @V("niche") String niche
    );
