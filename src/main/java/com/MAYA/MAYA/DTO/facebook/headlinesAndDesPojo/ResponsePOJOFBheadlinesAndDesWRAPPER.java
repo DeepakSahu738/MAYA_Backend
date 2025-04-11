@@ -5,8 +5,8 @@ import java.util.List;
 public class ResponsePOJOFBheadlinesAndDesWRAPPER {
     private List<ResponsePOJOFBheadlinesAndDes> hadlinesAndDes;
 
-    public void setEhadlinesAndDes(List<ResponsePOJOFBheadlinesAndDes> ehadlinesAndDes) {
-        this.hadlinesAndDes = ehadlinesAndDes;
+    public void setEhadlinesAndDes(List<ResponsePOJOFBheadlinesAndDes> hadlinesAndDes) {
+        this.hadlinesAndDes = hadlinesAndDes;
     }
 
     public List<ResponsePOJOFBheadlinesAndDes> getEhadlinesAndDes() {
