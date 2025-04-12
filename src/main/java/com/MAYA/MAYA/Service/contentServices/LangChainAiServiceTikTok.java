@@ -1,5 +1,11 @@
 package com.MAYA.MAYA.Service.contentServices;
 
+import com.MAYA.MAYA.DTO.tiktok.EngagementPojo.ResponsePOJOTTEngagementWRAPPER;
+import com.MAYA.MAYA.DTO.tiktok.hashtagPojo.ResponsePOJOTTHashtagsWRAPPER;
+import com.MAYA.MAYA.DTO.tiktok.hooksAndCaptionsPojo.ResponsePOJOTTHooksAndCaptionsWRAPPER;
+import com.MAYA.MAYA.DTO.tiktok.musicAndEffectPojo.ResponsePOJOTTMusicAndEffetWRAPPER;
+import com.MAYA.MAYA.DTO.tiktok.postingTimePojo.ResponsePOJOTTPostingTimeWRAPPER;
+import com.MAYA.MAYA.DTO.tiktok.videoIdeaPojo.ResponsePOJOTTVideoIdeaWRAPPER;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.spring.AiService;
@@ -10,7 +16,7 @@ import java.util.List;
 public interface LangChainAiServiceTikTok {
 
     @UserMessage("${TTPrompts.generateVideoIdeas}")
-    List<String> generateVideoIdeas(
+    ResponsePOJOTTVideoIdeaWRAPPER generateVideoIdeas(
             @V("niche") String niche,
             @V("videoFormat") String videoFormat,
             @V("videoGoal") String videoGoal,
@@ -19,14 +25,14 @@ public interface LangChainAiServiceTikTok {
     );
 
     @UserMessage("${TTPrompts.generateHooksAndCaption}")
-    String generateHooksAndCaption(
+    ResponsePOJOTTHooksAndCaptionsWRAPPER generateHooksAndCaption(
             @V("toneStyle") String toneStyle,
             @V("callToAction") String callToAction,
             @V("niche") String niche
     );
 
     @UserMessage("${TTPrompts.suggestHashtag}")
-    String suggestHashtag(
+    ResponsePOJOTTHashtagsWRAPPER suggestHashtag(
             @V("videoFormat") String videoFormat,
             @V("trendingOrEvergreen") String trendingOrEvergreen,
             @V("niche") String niche,
@@ -34,20 +40,20 @@ public interface LangChainAiServiceTikTok {
     );
 
     @UserMessage("${TTPrompts.suggestMusicAndEffect}")
-    String suggestMusicAndEffect(
+    ResponsePOJOTTMusicAndEffetWRAPPER suggestMusicAndEffect(
             @V("toneStyle") String toneStyle,
             @V("videoFormat") String videoFormat,
             @V("niche") String niche
     );
 
     @UserMessage("${TTPrompts.generateEngagement}")
-    String generateEngagement(
+    ResponsePOJOTTEngagementWRAPPER generateEngagement(
             @V("videoGoal") String videoGoal,
             @V("targetAudience") String targetAudience
     );
 
     @UserMessage("${TTPrompts.suggestBestPostTime}")
-    String suggestBestPostTime(
+    ResponsePOJOTTPostingTimeWRAPPER suggestBestPostTime(
             @V("targetAudience") String targetAudience
     );
 
