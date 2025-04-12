@@ -3,13 +3,13 @@ package com.MAYA.MAYA.DTO.facebook.headlinesAndDesPojo;
 import java.util.List;
 
 public class ResponsePOJOFBheadlinesAndDesWRAPPER {
-    private List<ResponsePOJOFBheadlinesAndDes> hadlinesAndDes;
+    private List<ResponsePOJOFBheadlinesAndDes> headlinesAndDes;
 
-    public void setEhadlinesAndDes(List<ResponsePOJOFBheadlinesAndDes> hadlinesAndDes) {
-        this.hadlinesAndDes = hadlinesAndDes;
+    public void setHeadlinesAndDes(List<ResponsePOJOFBheadlinesAndDes> headlinesAndDes) {
+        this.headlinesAndDes = headlinesAndDes;
     }
 
-    public List<ResponsePOJOFBheadlinesAndDes> getEhadlinesAndDes() {
-        return hadlinesAndDes;
+    public List<ResponsePOJOFBheadlinesAndDes> getHeadlinesAndDes() {
+        return headlinesAndDes;
     }
 }

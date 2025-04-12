@@ -28,7 +28,7 @@ public class facebookController {
     private ResponseEntity<Map<String, ResponsePOJOFBConbinedPOJO>> generateContentIdea(@RequestBody FacebookPostDTO request) {
         //we are doing the LangChain stuff in the service section
         String sessionId = UUID.randomUUID().toString();
-        ResponsePOJOFBConbinedPOJO conbinedPOJO = new ResponsePOJOFBConbinedPOJO();
+        ResponsePOJOFBConbinedPOJO combinedPOJO = new ResponsePOJOFBConbinedPOJO();
         try {
             ResponsePOJOFBPostIdeaWRAPPER generatePostIdeas = langChainAiServiceFacebook.generatePostIdeas(request.getPostGoal(),request.getNiche());
             ResponsePOJOFBheadlinesAndDesWRAPPER generateHeadlinesAndDes = langChainAiServiceFacebook.generateHeadlinesAndDes(request.getPostType(),request.getToneAndStyle(),request.getTargetAudience());
@@ -37,24 +37,24 @@ public class facebookController {
             ResponsePOJOFBadAndBoostingWRAPPER generateBoostingTips = langChainAiServiceFacebook.generateBoostingTips();
             ResponsePOJOFBPostingTimeWRAPPER suggestBestPostTime = langChainAiServiceFacebook.suggestBestPostTime(request.getTargetAudience());
 
-            conbinedPOJO.setpostIdeasList(generatePostIdeas);
-            conbinedPOJO.setheadlinesAndDesList(generateHeadlinesAndDes);
-            conbinedPOJO.sethashtagsList(suggestHashtags);
-            conbinedPOJO.setengagementFeatureList(suggestEngagementFeatures);
-            conbinedPOJO.setadAndBoostingList(generateBoostingTips);
-            conbinedPOJO.setPostingTimeList(suggestBestPostTime);
-;
+            combinedPOJO.setpostIdeasList(generatePostIdeas);
+            combinedPOJO.setheadlinesAndDesList(generateHeadlinesAndDes);
+            combinedPOJO.sethashtagsList(suggestHashtags);
+            combinedPOJO.setengagementFeatureList(suggestEngagementFeatures);
+            combinedPOJO.setadAndBoostingList(generateBoostingTips);
+            combinedPOJO.setPostingTimeList(suggestBestPostTime);
+
             Map<String, ResponsePOJOFBConbinedPOJO> response = new HashMap<>();
-              response.put("facebookData", conbinedPOJO);
+              response.put("facebookData", combinedPOJO);
             return  new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             ResponsePOJOFBPostIdea idea = new ResponsePOJOFBPostIdea();
             ResponsePOJOFBPostIdeaWRAPPER ideaWRAPPER = new ResponsePOJOFBPostIdeaWRAPPER();
             idea.setPostIdea("Error: Unable to generate Post ideas. Please try again later.");
             ideaWRAPPER.setPostIdeas((List<ResponsePOJOFBPostIdea>) idea);
-            conbinedPOJO.setpostIdeasList(ideaWRAPPER);
+            combinedPOJO.setpostIdeasList(ideaWRAPPER);
             Map<String, ResponsePOJOFBConbinedPOJO> response = new HashMap<>();
-            response.put("ERROR", conbinedPOJO);
+            response.put("ERROR", combinedPOJO);
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

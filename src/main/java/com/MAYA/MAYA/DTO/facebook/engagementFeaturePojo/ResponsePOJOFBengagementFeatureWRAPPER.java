@@ -3,13 +3,13 @@ package com.MAYA.MAYA.DTO.facebook.engagementFeaturePojo;
 import java.util.List;
 
 public class ResponsePOJOFBengagementFeatureWRAPPER {
-    private List<ResponsePOJOFBengagementFeature> featureList;
+    private List<ResponsePOJOFBengagementFeature> features;
 
-    public void setFeatureList(List<ResponsePOJOFBengagementFeature> featureList) {
-        this.featureList = featureList;
+    public void setFeatures(List<ResponsePOJOFBengagementFeature> features) {
+        this.features = features;
     }
 
-    public List<ResponsePOJOFBengagementFeature> getFeatureList() {
-        return featureList;
+    public List<ResponsePOJOFBengagementFeature> getFeatures() {
+        return features;
     }
 }

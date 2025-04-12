@@ -3,13 +3,13 @@ package com.MAYA.MAYA.DTO.facebook.adAndBoostingPojo;
 import java.util.List;
 
 public class ResponsePOJOFBadAndBoostingWRAPPER {
-    private List<ResponsePOJOFBadAndBoosting> boostingList;
+    private List<ResponsePOJOFBadAndBoosting> boostingTips;
 
-    public void setBoostingList(List<ResponsePOJOFBadAndBoosting> boostingList) {
-        this.boostingList = boostingList;
+    public void setBoostingTips(List<ResponsePOJOFBadAndBoosting> boostingTips) {
+        this.boostingTips = boostingTips;
     }
 
-    public List<ResponsePOJOFBadAndBoosting> getBoostingList() {
-        return boostingList;
+    public List<ResponsePOJOFBadAndBoosting> getBoostingTips() {
+        return boostingTips;
     }
 }
