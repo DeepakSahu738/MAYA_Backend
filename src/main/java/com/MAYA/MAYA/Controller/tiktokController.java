@@ -60,7 +60,6 @@ public class tiktokController {
             return  new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 //    @PostMapping("/tt_two")
 //    private ResponseEntity<Map<String, String>> generateHooksAndCaption(@RequestBody TikTokPostDTO request) {
 //        //we are doing the LangChain stuff in the service section
