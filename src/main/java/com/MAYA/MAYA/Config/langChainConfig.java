@@ -27,10 +27,10 @@ import java.util.logging.Logger;
 
 @Configuration
 public class langChainConfig {
-    @Bean
-    ChatMemoryProvider chatMemoryProvider(Tokenizer tokenizer) {
-        return chatId -> TokenWindowChatMemory.withMaxTokens(1000, tokenizer);
-    }
+//    @Bean
+//    ChatMemoryProvider chatMemoryProvider(Tokenizer tokenizer) {
+//        return chatId -> TokenWindowChatMemory.withMaxTokens(1000, tokenizer);
+//    }
 
     @Bean
     EmbeddingStore<TextSegment> embeddingStore() {
@@ -43,10 +43,10 @@ public class langChainConfig {
 //    }
 
 
-    @Bean
-    ChatMemory chatMemory() {
-        return MessageWindowChatMemory.withMaxMessages(10);
-    }
+//    @Bean
+//    ChatMemory chatMemory() {
+//        return MessageWindowChatMemory.withMaxMessages(10);
+//    }
     @Bean
     public ChatModelListener chatModelListener() {
         return new ChatModelListener() {

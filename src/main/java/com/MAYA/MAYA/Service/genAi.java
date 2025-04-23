@@ -34,7 +34,7 @@ public class genAi {
                 "        {\n" +
                 "            \"parts\": [\n" +
                 "                {\n" +
-                "                    \"text\": \"Tell me story about a cow\"\n" +
+                "                    \"text\": \"make me a diet plan to reduce 10 kg in 5 month my current weight is 90 \"\n" +
                 "                }\n" +
                 "            ]\n" +
                 "        }\n" +
