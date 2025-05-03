@@ -19,7 +19,9 @@ public class jwtTokenProvider {
     @Value("${secretKey}")
     private String JWT_SECRET ;
 
-    private final long JWT_EXPIRATION = 86400000L; // 1 day
+    private final long JWT_EXPIRATION_LOGGED = 86400000L; // 1 day
+
+    private final long JWT_EXPIRATION_GUEST = 3600000L;
     @Autowired
     private com.MAYA.MAYA.Repository.userRepository userRepository; // This should be the repository that interacts with your database
 
@@ -33,7 +35,12 @@ public class jwtTokenProvider {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         Long userID = user.getUserId();
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION);
+        Date expiryDate = new Date();
+        if(role.equalsIgnoreCase("USER")){
+        expiryDate = new Date(now.getTime() + JWT_EXPIRATION_LOGGED);}
+        else if (role.equalsIgnoreCase("GUEST")) {
+            expiryDate = new Date(now.getTime() + JWT_EXPIRATION_GUEST);
+        }
 
         return Jwts.builder()
                 .setSubject(username)
