@@ -59,6 +59,14 @@ public class user {
 
    public String getEmail(){return email;}
 
+   public LocalDateTime getCreatedDate() {
+      return createdDate;
+   }
+
+   public void setCreatedDate(LocalDateTime createdDate) {
+      this.createdDate = createdDate;
+   }
+
    public void setUserId(long userId) {
       id = userId;
    }
