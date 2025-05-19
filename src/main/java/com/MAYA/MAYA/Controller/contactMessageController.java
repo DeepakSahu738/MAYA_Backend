@@ -14,6 +14,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/contact")
+@CrossOrigin(origins = "http://localhost:5173")
 public class contactMessageController {
 
     @Autowired
@@ -56,7 +57,9 @@ public class contactMessageController {
 
         try {
             // Basic validation (optional but recommended)
-            if (contactMessage1.getEmail() == null || contactMessage1.getEmail().isEmpty()) {
+            if (contactMessage1.getEmail() == null || contactMessage1.getEmail().isEmpty()
+            ||  contactMessage1.getName() ==null || contactMessage1.getName().isEmpty()
+            ||  contactMessage1.getMessage() == null || contactMessage1.getMessage().isEmpty()){
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
             contactMessage contactMessage2 = contactMessageRepository.save(contactMessage1);

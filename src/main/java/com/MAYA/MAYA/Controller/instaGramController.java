@@ -28,7 +28,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/content/instagram")
-@CrossOrigin(origins = "http://localhost:9090")
+@CrossOrigin(origins = "http://localhost:5173")
 public class instaGramController {
 
     @Autowired
