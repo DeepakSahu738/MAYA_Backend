@@ -3,6 +3,9 @@ package com.MAYA.MAYA.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name="users")
@@ -25,6 +28,10 @@ public class user {
 
    @Column(name = "password", nullable = false)
    private String password;
+
+   @Column(name = "created_at", updatable = false)
+   @CreationTimestamp
+   private LocalDateTime createdDate;
 
    @Enumerated(EnumType.STRING)
    @Column(name = "role", nullable = false)
@@ -51,6 +58,14 @@ public class user {
    }
 
    public String getEmail(){return email;}
+
+   public LocalDateTime getCreatedDate() {
+      return createdDate;
+   }
+
+   public void setCreatedDate(LocalDateTime createdDate) {
+      this.createdDate = createdDate;
+   }
 
    public void setUserId(long userId) {
       id = userId;

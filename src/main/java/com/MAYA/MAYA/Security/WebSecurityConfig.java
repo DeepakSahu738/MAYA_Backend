@@ -46,6 +46,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/auth/login", "/auth/registerUser").permitAll()
                         .requestMatchers("/auth/**").authenticated()
                         .requestMatchers("/api/content/**").permitAll()
+                        .requestMatchers("/contact/**").permitAll()
 
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2
