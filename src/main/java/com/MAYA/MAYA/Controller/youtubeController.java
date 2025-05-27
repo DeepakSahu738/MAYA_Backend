@@ -50,8 +50,10 @@ public class youtubeController {
         } catch (Exception e) {
             ResponsePOJOYTVideoIdea erroridea = new ResponsePOJOYTVideoIdea();
             ResponsePOJOYTVideoIdeaWRAPPER errorideaList = new ResponsePOJOYTVideoIdeaWRAPPER();
-            erroridea.setVideoIdea("Error: Unable to generate VideoIdeas. Please try again later.");
-            errorideaList.setVideoIdeas((List<ResponsePOJOYTVideoIdea>) erroridea);
+            erroridea.setVideoIdea("Error: Unable to generate VideoIdeas. Please try again later."+e.getMessage());
+            List<ResponsePOJOYTVideoIdea> videoIdeas = new ArrayList<>();
+            videoIdeas.add(erroridea);
+            errorideaList.setVideoIdeas(videoIdeas);
             combinedPOJO.setVideoIdeaList(errorideaList);
             Map<String, ResponsePOJOYTCombinedPOJO> response = new HashMap<>();
             response.put("ERROR", combinedPOJO);

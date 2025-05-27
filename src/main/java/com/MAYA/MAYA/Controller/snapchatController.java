@@ -32,11 +32,11 @@ public class snapchatController {
         String sessionId = UUID.randomUUID().toString();
         ResponsePOJOSCConbinedPOJO conbinedPOJO =new ResponsePOJOSCConbinedPOJO();
         try {
-            ResponsePOJOSCStoryIdeaWRAPPER generateStoryIdeas = langChainAiServiceSnapchat.generateStoryIdeas(request.getSnapGoal(),request.getNiche(),request.getStoryType(),request.getToneAndStyle(),request.getCallToAction(),request.getContentType());
+            ResponsePOJOSCStoryIdeaWRAPPER generateStoryIdeas = langChainAiServiceSnapchat.generateStoryIdeas(request.getSnapGoal(),request.getNiche(),request.getStoryType(),request.getTargetAudience(),request.getToneAndStyle(),request.getCallToAction(),request.getContentType());
             ResponsePOJOSCTextOverlaysWRAPPER generateTextOverlays = langChainAiServiceSnapchat.generateTextOverlays(request.getStoryType(),request.getToneAndStyle(),request.getNiche(),request.getCallToAction(),request.getStickersAndFilters(),request.getTargetAudience());
             ResponsePOJOSClensesAndFiltersWRAPPER suggestTrendingLensesAndFilters = langChainAiServiceSnapchat.suggestTrendingLensesAndFilters(request.getNiche(),request.getContentType(),request.getStoryType(),request.getTargetAudience(),request.getStickersAndFilters());
             ResponsePOJOSCEngagementFeaturesWRAPPER suggestEngagementFeatures = langChainAiServiceSnapchat.suggestEngagementFeatures(request.getToneAndStyle(),request.getStoryType(),request.getNiche());
-            ResponsePOJOSCBoostingTipsWRAPPER generateBoostingTips = langChainAiServiceSnapchat.generateBoostingTips();
+            ResponsePOJOSCBoostingTipsWRAPPER generateBoostingTips = langChainAiServiceSnapchat.generateBoostingTips(request.getSnapGoal(),request.getNiche());
             ResponsePOJOSCPOstingTimeWRAPPER suggestBestPostTime = langChainAiServiceSnapchat.suggestBestPostTime(request.getTargetAudience(),request.getStoryType());
 
 
@@ -55,8 +55,10 @@ public class snapchatController {
 
             ResponsePOJOSCStoryIdea story = new ResponsePOJOSCStoryIdea();
             ResponsePOJOSCStoryIdeaWRAPPER storyWRAPPER = new ResponsePOJOSCStoryIdeaWRAPPER();
-            story.setStoryIdea("Error: Unable to generate StoryIdeas. Please try again later.");
-            storyWRAPPER.setStoryIdeas((List<ResponsePOJOSCStoryIdea>) story);
+            story.setStoryIdea("Error: Unable to generate StoryIdeas. Please try again later."+e.getMessage());
+            List<ResponsePOJOSCStoryIdea> storyIdeas= new ArrayList<>();
+            storyIdeas.add(story);
+            storyWRAPPER.setStoryIdeas(storyIdeas);
             conbinedPOJO.setStoryIdeaList(storyWRAPPER);
             Map<String, ResponsePOJOSCConbinedPOJO> response = new HashMap<>();
             response.put("ERROR", conbinedPOJO);

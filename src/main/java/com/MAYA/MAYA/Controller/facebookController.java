@@ -50,8 +50,10 @@ public class facebookController {
         } catch (Exception e) {
             ResponsePOJOFBPostIdea idea = new ResponsePOJOFBPostIdea();
             ResponsePOJOFBPostIdeaWRAPPER ideaWRAPPER = new ResponsePOJOFBPostIdeaWRAPPER();
-            idea.setPostIdea("Error: Unable to generate Post ideas. Please try again later.");
-            ideaWRAPPER.setPostIdeas((List<ResponsePOJOFBPostIdea>) idea);
+            idea.setPostIdea("Error: Unable to generate Post ideas. Please try again later."+e.getMessage());
+            List<ResponsePOJOFBPostIdea> postIdeas =new ArrayList<>();
+            postIdeas.add(idea);
+            ideaWRAPPER.setPostIdeas(postIdeas);
             combinedPOJO.setpostIdeasList(ideaWRAPPER);
             Map<String, ResponsePOJOFBConbinedPOJO> response = new HashMap<>();
             response.put("ERROR", combinedPOJO);

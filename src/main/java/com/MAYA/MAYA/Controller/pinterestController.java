@@ -49,8 +49,10 @@ public class pinterestController {
         } catch (Exception e) {
             ResponsePOJOPPinIdeaWRAPPER errorList = new ResponsePOJOPPinIdeaWRAPPER();
             ResponsePOJOPPinIdea error = new ResponsePOJOPPinIdea();
-            error.setPinIdea("Error: Unable to generate Pin Ideas. Please try again later.");
-            errorList.setPinIdeas((List<ResponsePOJOPPinIdea>) error);
+            error.setPinIdea("Error: Unable to generate Pin Ideas. Please try again later."+e.getMessage());
+            List<ResponsePOJOPPinIdea> errorIdeas = new ArrayList<>();
+            errorIdeas.add(error);
+            errorList.setPinIdeas(errorIdeas);
             combinedPOJO.setPinIdeaList(errorList);
             Map<String, ResponsePOJOPCombinedPOJO> response = new HashMap<>();
             response.put("ERROR",combinedPOJO);

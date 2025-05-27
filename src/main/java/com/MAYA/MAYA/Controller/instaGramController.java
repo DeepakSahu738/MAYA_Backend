@@ -89,10 +89,12 @@ public class instaGramController {
             System.out.println("This is the exception"+e.getMessage());
             Map<String, ResponsePOJOInstaCombinedPOJO> response = new HashMap<>();
             ResponsePOJOInstaContentIdea error = new ResponsePOJOInstaContentIdea();
-            error.setContentIdea("Error: Unable to generate content ideas. Please try again later.");
+            error.setContentIdea("Error: Unable to generate content ideas. Please try again later."+e.getMessage());
 
             ResponsePOJOInstaContentIdeaWRAPPER errorList = new ResponsePOJOInstaContentIdeaWRAPPER();
-            errorList.setContentIdeas((List<ResponsePOJOInstaContentIdea>) error);
+            List<ResponsePOJOInstaContentIdea> contentIdeas = new ArrayList<>();
+            contentIdeas.add(error);
+            errorList.setContentIdeas(contentIdeas);
             ResponsePOJOInstaCombinedPOJO combinedErrorList = new ResponsePOJOInstaCombinedPOJO();
             combinedErrorList.setContentIdeaList(errorList);
             response.put("ERROR",  combinedErrorList);

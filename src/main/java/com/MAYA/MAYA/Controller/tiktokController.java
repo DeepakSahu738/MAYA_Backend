@@ -52,8 +52,10 @@ public class tiktokController {
             ResponsePOJOTTVideoIdea erroridea = new ResponsePOJOTTVideoIdea();
             ResponsePOJOTTVideoIdeaWRAPPER errorideaWRAPPER = new ResponsePOJOTTVideoIdeaWRAPPER();
 
-            erroridea.setVideoIdea("Error: Unable to generate VideoIdeas. Please try again later.");
-            errorideaWRAPPER.setVideoIdeas((List<ResponsePOJOTTVideoIdea>) erroridea);
+            erroridea.setVideoIdea("Error: Unable to generate VideoIdeas. Please try again later."+e.getMessage());
+            List<ResponsePOJOTTVideoIdea> videoIdeas = new ArrayList<>();
+            videoIdeas.add(erroridea);
+            errorideaWRAPPER.setVideoIdeas(videoIdeas);
             combinedPOJO.setVideoIdeaList(errorideaWRAPPER);
             Map<String, ResponsePOJOTTCombinedPOJO> response = new HashMap<>();
             response.put("ERROR", combinedPOJO);
