@@ -21,7 +21,12 @@ public class jwtTokenProvider {
 
     private final long JWT_EXPIRATION_LOGGED = 86400000L; // 1 day
 
-    private final long JWT_EXPIRATION_GUEST = 3600000L;
+    private final long JWT_EXPIRATION_GUEST = 600000L;
+    //120000L for 2 min
+    //3600000L for 1 hr
+    //600000L;    10 minutes
+    //900000L;    15 minutes
+    //1800000L;   30 minutes
     @Autowired
     private com.MAYA.MAYA.Repository.userRepository userRepository; // This should be the repository that interacts with your database
 

@@ -21,6 +21,8 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
@@ -41,11 +43,12 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers("/auth/login", "/auth/registerUser").permitAll()
                         .requestMatchers("/auth/**").authenticated()
-                        .requestMatchers("/api/content/**").permitAll()
+                        .requestMatchers("/api/content/**").authenticated()
                         .requestMatchers("/contact/**").permitAll()
 
                 )
