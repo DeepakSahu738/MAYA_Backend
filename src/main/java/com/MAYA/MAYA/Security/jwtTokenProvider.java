@@ -27,6 +27,7 @@ public class jwtTokenProvider {
     //600000L;    10 minutes
     //900000L;    15 minutes
     //1800000L;   30 minutes
+    //86400000L;  1 day
     @Autowired
     private com.MAYA.MAYA.Repository.userRepository userRepository; // This should be the repository that interacts with your database
 
