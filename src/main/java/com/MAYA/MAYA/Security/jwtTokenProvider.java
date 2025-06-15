@@ -33,12 +33,12 @@ public class jwtTokenProvider {
 
     public String generateToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String username = userDetails.getUsername();
+        String email = userDetails.getUsername();
         String role = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).findFirst().orElse(null);
         System.out.println("auth ye aaya "+role);
 
-        user user = userRepository.findByName(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        user user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
         Long userID = user.getUserId();
         Date now = new Date();
         Date expiryDate = new Date();
@@ -49,7 +49,7 @@ public class jwtTokenProvider {
         }
 
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(email)
                 .claim("userID", userID)
                 .claim("role",role)
                 .setIssuedAt(new Date())

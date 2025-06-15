@@ -37,6 +37,28 @@ public class user {
    @Column(name = "role", nullable = false)
    private Role role;
 
+   @Column(name="firstname", nullable = false)
+   private String firstname;
+
+   public String getFirstname() {
+      return firstname;
+   }
+
+   public void setFirstname(String firstname) {
+      this.firstname = firstname;
+   }
+
+   public String getLastname() {
+      return lastname;
+   }
+
+   public void setLastname(String lastname) {
+      this.lastname = lastname;
+   }
+
+   @Column(name="lastname", nullable = false)
+   private String lastname;
+
    public Role getRole() {
       return role;
    }

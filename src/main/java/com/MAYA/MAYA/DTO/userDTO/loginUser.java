@@ -2,19 +2,21 @@ package com.MAYA.MAYA.DTO.userDTO;
 import jakarta.validation.constraints.NotBlank;
 
 public class loginUser {
-    @NotBlank(message = "name is required")
-    private String name;
+    @NotBlank(message = "email is required")
+    private String email;
 
     @NotBlank(message = "Password is required")
     private String password;
 
     // Getters and Setters
-    public String getName() {
-        return name;
+
+
+    public String getEmail() {
+        return email;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {
@@ -28,8 +30,8 @@ public class loginUser {
     // Constructor
     public loginUser() {}
 
-    public loginUser(String name, String password) {
-        this.name = name;
+    public loginUser(String email, String password) {
+        this.email = email;
         this.password = password;
     }
 }

@@ -20,12 +20,12 @@ public class CustomUserDetailsService implements org.springframework.security.co
     private  userRepository userRepository; // This should be the repository that interacts with your database
 
     @Override
-    public UserDetails loadUserByUsername(String name) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         // Fetch user from the database by name
-         user user = userRepository.findByName(name)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + name));
+         user user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         // Return the UserDetails object. This is how Spring Security handles the user authentication.
-        return new User(user.getName(), user.getPassword(), Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name())));  // You can add authorities/roles if needed
+        return new User(user.getEmail(), user.getPassword(), Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name())));  // You can add authorities/roles if needed
     }
 }

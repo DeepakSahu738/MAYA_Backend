@@ -91,10 +91,18 @@ public class userController {
     }
 
     @PostMapping("/registerUser")
-    private ResponseEntity<user> adduser(@RequestBody user user1) {
+    private ResponseEntity<?> adduser(@RequestBody user user1) {
+
+        Optional<user> existingUser = userRepository.findByEmailIgnoreCase(user1.getEmail());
+        if (existingUser.isPresent()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Email is already taken. Please use a different one.");
+        }
 
         String hashedPassword = passwordEncoder.encode(user1.getPassword());
         user1.setPassword(hashedPassword);
+        user1.setEmail(user1.getEmail().toLowerCase());
         user user2 = userRepository.save(user1);
         // use this to compare existing password to new password - PasswordEncoder.matches(rawPassword, encodedPassword)
 
@@ -104,7 +112,7 @@ public class userController {
     public ResponseEntity<String> login(@RequestBody loginUser loginUser) {
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginUser.getName(), loginUser.getPassword()));
+                    new UsernamePasswordAuthenticationToken(loginUser.getEmail(), loginUser.getPassword()));
             System.out.println("Authentication: " + authentication);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String token = jwtTokenProvider.generateToken(authentication);
