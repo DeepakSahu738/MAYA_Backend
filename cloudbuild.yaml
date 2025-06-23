@@ -50,11 +50,11 @@ steps:
 # Define the environment variables that hold your secrets
 availableSecrets:
   secretManager:
-    - versionName: "projects/PROJECT_NUMBER/secrets/AIVEN_DB_PASSWORD/versions/latest"
+    - versionName: "projects/326007673689/secrets/AIVEN_DB_PASSWORD/versions/latest"
       env: "AIVEN_DB_PASSWORD"
-    - versionName: "projects/PROJECT_NUMBER/secrets/OPENAI_API_KEY/versions/latest"
+    - versionName: "projects/326007673689/secrets/OPENAI_API_KEY/versions/latest"
       env: "OPENAI_API_KEY"
-    - versionName: "projects/PROJECT_NUMBER/secrets/JWT_SECRET/versions/latest"
+    - versionName: "projects/326007673689/secrets/JWT_SECRET/versions/latest"
       env: "JWT_SECRET"
 
 timeout: 900s
