@@ -14,10 +14,9 @@ steps:
     entrypoint: 'bash'
     args:
       - '-c'
-      - |
-        gcloud auth configure-docker us-east1-docker.pkg.dev
+      - gcloud auth configure-docker us-east1-docker.pkg.dev
 
-  # 3. Build Docker image (no secrets at build time)
+  # 3. Build Docker image (no secrets baked in)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       [
@@ -34,7 +33,7 @@ steps:
         'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
       ]
 
-  # 5. Deploy to Cloud Run with runtime secrets injected as env variables
+  # 5. Deploy to Cloud Run with secrets injected as env vars from Secret Manager
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       [
@@ -44,18 +43,19 @@ steps:
         '--region', 'us-east1',
         '--allow-unauthenticated',
         '--update-env-vars',
-        'AIVEN_DB_PASSWORD,OPENAI_API_KEY,JWT_SECRET'
+        'AIVEN_DB_PASSWORD=$_AIVEN_DB_PASSWORD,OPENAI_API_KEY=$_OPENAI_API_KEY,JWT_SECRET=$_JWT_SECRET'
       ]
 
-# Define the environment variables that hold your secrets
 availableSecrets:
   secretManager:
     - versionName: "projects/326007673689/secrets/AIVEN_DB_PASSWORD/versions/latest"
-      env: "AIVEN_DB_PASSWORD"
+      env: "_AIVEN_DB_PASSWORD"
     - versionName: "projects/326007673689/secrets/OPENAI_API_KEY/versions/latest"
-      env: "OPENAI_API_KEY"
+      env: "_OPENAI_API_KEY"
     - versionName: "projects/326007673689/secrets/JWT_SECRET/versions/latest"
-      env: "JWT_SECRET"
+      env: "_JWT_SECRET"
+
 options:
   logging: CLOUD_LOGGING_ONLY
+
 timeout: 900s
