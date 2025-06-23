@@ -47,9 +47,7 @@ steps:
         '--region', 'us-central1',
         '--allow-unauthenticated',
         '--set-secrets',
-        'AIVEN_DB_PASSWORD=AIVEN_DB_PASSWORD:latest',
-        'OPENAI_API_KEY=OPENAI_API_KEY:latest',
-        'JWT_SECRET=JWT_SECRET:latest'
+        'AIVEN_DB_PASSWORD=AIVEN_DB_PASSWORD:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest'
       ]
 
 # Optional build options
