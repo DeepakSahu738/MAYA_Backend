@@ -5,10 +5,10 @@ steps:
     args:
       - '-c'
       - |
-        if ! gcloud artifacts repositories describe maya-backend-repo --location=us-east1; then
+        if ! gcloud artifacts repositories describe maya-backend-repo --location=us-central1; then
           gcloud artifacts repositories create maya-backend-repo \
             --repository-format=docker \
-            --location=us-east1 \
+            --location=us-central1 \
             --quiet
         fi
 
@@ -18,14 +18,14 @@ steps:
     args:
       - '-c'
       - |
-        gcloud auth configure-docker us-east1-docker.pkg.dev
+        gcloud auth configure-docker us-central1-docker.pkg.dev
 
   # Step 3: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       [
         'build',
-        '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
+        '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
         '.'
       ]
 
@@ -34,7 +34,7 @@ steps:
     args:
       [
         'push',
-        'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
+        'us-central1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
       ]
 
   # Step 5: Deploy to Cloud Run with runtime secrets from Secret Manager
@@ -42,9 +42,9 @@ steps:
     args:
       [
         'run', 'deploy', 'maya-backend-service',
-        '--image', 'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
+        '--image', 'us-central1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
         '--platform', 'managed',
-        '--region', 'us-east1',
+        '--region', 'us-central1',
         '--allow-unauthenticated',
         '--set-secrets',
         'AIVEN_DB_PASSWORD=AIVEN_DB_PASSWORD:latest',
