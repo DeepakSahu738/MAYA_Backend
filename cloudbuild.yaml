@@ -1,64 +1,60 @@
-name: Build & Deploy to Cloud Run
+steps:
+  # 1. Create Artifact Registry repository if it doesn't exist
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if ! gcloud artifacts repositories describe maya-backend-repo --location=us-east1; then
+          gcloud artifacts repositories create maya-backend-repo --repository-format=docker --location=us-east1 --quiet
+        fi
 
+  # 2. Authenticate Docker to Artifact Registry
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud auth configure-docker us-east1-docker.pkg.dev
 
-push:
-  branches: [master]
+  # 3. Build Docker image (no secrets at build time)
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
+        '.'
+      ]
 
-env:
-  _REGION: us-east1
-  _REPO_NAME: maya-backend-repo
-  _SERVICE_NAME: maya-backend-service
-  _IMAGE: maya-backend
+  # 4. Push Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
+      ]
 
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  # 5. Deploy to Cloud Run with runtime secrets injected as env variables
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      [
+        'run', 'deploy', 'maya-backend-service',
+        '--image', 'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
+        '--platform', 'managed',
+        '--region', 'us-east1',
+        '--allow-unauthenticated',
+        '--update-env-vars',
+        'AIVEN_DB_PASSWORD=$AIVEN_DB_PASSWORD,OPENAI_API_KEY=$OPENAI_API_KEY,JWT_SECRET=$JWT_SECRET'
+      ]
 
-    steps:
-      - uses: actions/checkout@v3
+# Define the environment variables that hold your secrets
+availableSecrets:
+  secretManager:
+    - versionName: "projects/PROJECT_NUMBER/secrets/AIVEN_DB_PASSWORD/versions/latest"
+      env: "AIVEN_DB_PASSWORD"
+    - versionName: "projects/PROJECT_NUMBER/secrets/OPENAI_API_KEY/versions/latest"
+      env: "OPENAI_API_KEY"
+    - versionName: "projects/PROJECT_NUMBER/secrets/JWT_SECRET/versions/latest"
+      env: "JWT_SECRET"
 
-      # 1. Create Artifact Registry repo if needed
-      - name: Create Artifact Registry Repository
-        run: |
-          gcloud artifacts repositories describe ${_REPO_NAME} --location=${_REGION} || \
-          gcloud artifacts repositories create ${_REPO_NAME} \
-            --repository-format=docker --location=${_REGION} --quiet
-        id: create-repo
-
-      # 2. Authenticate Docker to Artifact Registry
-      - name: Authenticate Docker to Artifact Registry
-        run: |
-          gcloud auth configure-docker ${_REGION}-docker.pkg.dev
-        id: docker-auth
-        wait_for: ['create-repo']
-
-      # 3. Build Docker image (no secrets at build time)
-      - name: Build Docker Image
-        run: |
-          docker build \
-            -t ${_REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${_REPO_NAME}/${_IMAGE}:${GITHUB_SHA} .
-        id: build
-        wait_for: ['docker-auth']
-
-      # 4. Push Docker image
-      - name: Push Docker Image
-        run: |
-          docker push ${_REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${_REPO_NAME}/${_IMAGE}:${GITHUB_SHA}
-        id: push
-        wait_for: ['build']
-
-      # 5. Deploy to Cloud Run with runtime secrets
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy ${_SERVICE_NAME} \
-            --image=${_REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${_REPO_NAME}/${_IMAGE}:${GITHUB_SHA} \
-            --platform=managed \
-            --region=${_REGION} \
-            --allow-unauthenticated \
-            --update-env-vars \
-              AIVEN_DB_PASSWORD="${{ secrets.AIVEN_DB_PASSWORD }}",\
-              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}",\
-              JWT_SECRET="${{ secrets.JWT_SECRET }}"
-id: deploy
-wait_for: ['push']
+timeout: 900s
