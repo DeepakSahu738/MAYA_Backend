@@ -56,5 +56,6 @@ availableSecrets:
       env: "OPENAI_API_KEY"
     - versionName: "projects/326007673689/secrets/JWT_SECRET/versions/latest"
       env: "JWT_SECRET"
-
+options:
+  logging: CLOUD_LOGGING_ONLY
 timeout: 900s
