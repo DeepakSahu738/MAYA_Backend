@@ -43,17 +43,17 @@ steps:
         '--region', 'us-east1',
         '--allow-unauthenticated',
         '--update-env-vars',
-        'AIVEN_DB_PASSWORD=$_AIVEN_DB_PASSWORD,OPENAI_API_KEY=$_OPENAI_API_KEY,JWT_SECRET=$_JWT_SECRET'
+        'AIVEN_DB_PASSWORD=$AIVEN_DB_PASSWORD,OPENAI_API_KEY=$OPENAI_API_KEY,JWT_SECRET=$JWT_SECRET'
       ]
 
 availableSecrets:
   secretManager:
     - versionName: "projects/326007673689/secrets/AIVEN_DB_PASSWORD/versions/latest"
-      env: "_AIVEN_DB_PASSWORD"
+      env: "AIVEN_DB_PASSWORD"
     - versionName: "projects/326007673689/secrets/OPENAI_API_KEY/versions/latest"
-      env: "_OPENAI_API_KEY"
+      env: "OPENAI_API_KEY"
     - versionName: "projects/326007673689/secrets/JWT_SECRET/versions/latest"
-      env: "_JWT_SECRET"
+      env: "JWT_SECRET"
 
 options:
   logging: CLOUD_LOGGING_ONLY
