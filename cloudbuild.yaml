@@ -44,7 +44,7 @@ steps:
         '--region', 'us-east1',
         '--allow-unauthenticated',
         '--update-env-vars',
-        'AIVEN_DB_PASSWORD=$AIVEN_DB_PASSWORD,OPENAI_API_KEY=$OPENAI_API_KEY,JWT_SECRET=$JWT_SECRET'
+        'AIVEN_DB_PASSWORD,OPENAI_API_KEY,JWT_SECRET'
       ]
 
 # Define the environment variables that hold your secrets
