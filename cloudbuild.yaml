@@ -14,9 +14,10 @@ steps:
     entrypoint: 'bash'
     args:
       - '-c'
-      - gcloud auth configure-docker us-east1-docker.pkg.dev
+      - |
+        gcloud auth configure-docker us-east1-docker.pkg.dev
 
-  # 3. Build Docker image (no secrets baked in)
+  # 3. Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       [
@@ -33,19 +34,22 @@ steps:
         'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
       ]
 
-  # 5. Deploy to Cloud Run with secrets injected as env vars from Secret Manager
+  # 5. Deploy to Cloud Run with secrets as environment variables
   - name: 'gcr.io/cloud-builders/gcloud'
+    secretEnv: ['AIVEN_DB_PASSWORD', 'OPENAI_API_KEY', 'JWT_SECRET']
+    entrypoint: 'bash'
     args:
-      [
-        'run', 'deploy', 'maya-backend-service',
-        '--image', 'us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
-        '--platform', 'managed',
-        '--region', 'us-east1',
-        '--allow-unauthenticated',
-        '--update-env-vars',
-        'AIVEN_DB_PASSWORD=$AIVEN_DB_PASSWORD,OPENAI_API_KEY=$OPENAI_API_KEY,JWT_SECRET=$JWT_SECRET'
-      ]
+      - '-c'
+      - |
+        gcloud run deploy maya-backend-service \
+          --image=us-east1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA \
+          --platform=managed \
+          --region=us-east1 \
+          --allow-unauthenticated \
+          --update-env-vars \
+          AIVEN_DB_PASSWORD=$AIVEN_DB_PASSWORD,OPENAI_API_KEY=$OPENAI_API_KEY,JWT_SECRET=$JWT_SECRET
 
+# Bind the secret names to env variables
 availableSecrets:
   secretManager:
     - versionName: "projects/326007673689/secrets/AIVEN_DB_PASSWORD/versions/latest"
@@ -57,5 +61,4 @@ availableSecrets:
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
 timeout: 900s
