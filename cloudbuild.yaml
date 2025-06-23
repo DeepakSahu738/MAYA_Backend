@@ -1,8 +1,8 @@
 name: Build & Deploy to Cloud Run
 
-on:
-  push:
-    branches: [master]
+
+push:
+  branches: [master]
 
 env:
   _REGION: us-east1
