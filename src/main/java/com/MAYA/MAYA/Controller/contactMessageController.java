@@ -14,7 +14,8 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/contact")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173","https://mayamanage.com","https://mayamanage-84da8.firebaseapp.com",
+        "https://mayamanage-84da8.web.app"})
 public class contactMessageController {
 
     @Autowired
