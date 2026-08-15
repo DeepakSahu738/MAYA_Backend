@@ -27,7 +27,6 @@ public class DataSeedService implements CommandLineRunner {
     private final CommentRepository commentRepository;
     
     @Override
-    @Transactional
     public void run(String... args) {
         log.info("Checking database seed status...");
         
