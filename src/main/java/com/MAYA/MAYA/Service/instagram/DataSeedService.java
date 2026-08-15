@@ -2,13 +2,13 @@ package com.MAYA.MAYA.Service.instagram;
 
 import com.MAYA.MAYA.Entity.instagram.*;
 import com.MAYA.MAYA.Repository.instagram.*;
+import com.MAYA.MAYA.Service.analytics.AnalyticsProcessingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -25,9 +25,22 @@ public class DataSeedService implements CommandLineRunner {
     private final CreatorRepository creatorRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final AnalyticsProcessingService analyticsProcessingService;
     
     @Override
     public void run(String... args) {
+        // Run seeding in a separate thread so it doesn't block app startup
+        // Cloud Run needs the app to respond to health checks quickly
+        new Thread(() -> {
+            try {
+                seed();
+            } catch (Exception e) {
+                log.error("Seeding failed: {}", e.getMessage(), e);
+            }
+        }, "data-seed-thread").start();
+    }
+
+    private void seed() {
         log.info("Checking database seed status...");
         
         // Quick exit: if all 4 demo creators exist AND have comments, skip entirely
@@ -90,6 +103,18 @@ public class DataSeedService implements CommandLineRunner {
         }
         
         log.info("Database seed check completed!");
+        
+        // Now run analytics processing on seeded data
+        log.info("Starting analytics processing for demo creators...");
+        List<Creator> creators = creatorRepository.findAll();
+        for (Creator creator : creators) {
+            try {
+                analyticsProcessingService.processCreatorAnalytics(creator);
+            } catch (Exception e) {
+                log.warn("Analytics processing failed for {}: {}", creator.getUsername(), e.getMessage());
+            }
+        }
+        log.info("Analytics processing completed!");
     }
     
     private Creator seedCreator(JsonNode firstPost) {
