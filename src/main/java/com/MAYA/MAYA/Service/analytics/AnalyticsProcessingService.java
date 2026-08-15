@@ -46,9 +46,11 @@ public class AnalyticsProcessingService implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        // On Cloud Run, seeding runs async in DataSeedService thread.
+        // This CommandLineRunner only handles the case where seeding already completed (restart scenario).
         List<Creator> creators = creatorRepository.findAll();
         if (creators.isEmpty()) {
-            log.info("No creators found, skipping analytics processing.");
+            log.info("No creators found, skipping analytics processing (will run after seeding completes).");
             return;
         }
         
