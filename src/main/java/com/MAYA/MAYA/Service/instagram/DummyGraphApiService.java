@@ -18,17 +18,11 @@ public class DummyGraphApiService {
     private final ObjectMapper objectMapper;
     
     private static final String[] PROFILE_FILES = {
-        "phyllo_fitlife_by_meera.json",
-        "phyllo_techwithriya.json",
-        "phyllo_the.monkey.who.left.hc.verma.json",
-        "phyllo_travelwithkartik.json"
+        "phyllo_fitlife_by_meera.json"
     };
     
     private static final String[] COMMENT_FILES = {
-        "phyllo_comments_fitlife_by_meera.json",
-        "phyllo_comments_techwithriya.json",
-        "phyllo_comments_the.monkey.who.left.hc.verma.json",
-        "phyllo_comments_travelwithkartik.json"
+        "phyllo_comments_fitlife_by_meera.json"
     };
     
     /**

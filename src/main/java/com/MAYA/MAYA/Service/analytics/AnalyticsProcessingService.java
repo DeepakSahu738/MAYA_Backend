@@ -46,31 +46,10 @@ public class AnalyticsProcessingService implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        // On Cloud Run, seeding runs async in DataSeedService thread.
-        // This CommandLineRunner only handles the case where seeding already completed (restart scenario).
-        List<Creator> creators = creatorRepository.findAll();
-        if (creators.isEmpty()) {
-            log.info("No creators found, skipping analytics processing (will run after seeding completes).");
-            return;
-        }
-        
-        // Quick exit: if all demo creators already have weekly reports for this week, skip
-        java.time.LocalDate weekStart = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY);
-        long existingReports = weeklyReportRepository.count();
-        long demoCreators = creators.stream().filter(c -> c.getId() <= 8).count();
-        if (existingReports >= demoCreators && hashtagPerformanceRepository.count() > 0) {
-            log.info("Analytics already processed ({} reports, hashtags exist). Skipping.", existingReports);
-            return;
-        }
-        
-        for (Creator creator : creators) {
-            log.info("Processing analytics for creator: {}", creator.getUsername());
-            processHashtagPerformance(creator);
-            processTopCommenters(creator);
-            processWeeklyReport(creator);
-        }
-        
-        log.info("Analytics processing completed for {} creators.", creators.size());
+        // Analytics processing is now triggered by DataSeedService after seeding completes.
+        // This CommandLineRunner is kept for backward compat but does nothing on its own.
+        // The processCreatorAnalytics() method is called directly by DataSeedService and NightlySyncJob.
+        log.info("AnalyticsProcessingService ready (triggered by DataSeedService/NightlySyncJob).");
     }
     
     /**

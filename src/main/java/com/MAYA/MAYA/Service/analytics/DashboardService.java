@@ -38,6 +38,16 @@ public class DashboardService {
         List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId);
         List<Comment> comments = commentRepository.findByCreatorIdOrderByCommentedAtDesc(creatorId);
 
+        // If no posts yet (still seeding or sync in progress), return a minimal "loading" response
+        if (posts.isEmpty()) {
+            return DashboardResponseDTO.builder()
+                .creatorId(creatorId)
+                .username(creator.getUsername())
+                .niche(creator.getNiche())
+                .generatedAt(LocalDateTime.now())
+                .build();
+        }
+
         return DashboardResponseDTO.builder()
             .creatorId(creatorId)
             .username(creator.getUsername())
