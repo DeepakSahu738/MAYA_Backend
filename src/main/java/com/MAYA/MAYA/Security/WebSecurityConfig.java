@@ -53,6 +53,13 @@ public class WebSecurityConfig {
                         .requestMatchers("/auth/login", "/auth/registerUser").permitAll()
                         .requestMatchers("/auth/**").authenticated()
                         .requestMatchers("/api/content/**").authenticated()
+                        .requestMatchers("/api/analytics/**").permitAll()
+                        .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/api/phyllo/**").authenticated()
+                        .requestMatchers("/api/goals/**").authenticated()
+                        .requestMatchers("/api/posts/**").authenticated()
+                        .requestMatchers("/api/schedule/**").permitAll()
+                        .requestMatchers("/api/strategy/**").permitAll()
                         .requestMatchers("/contact/**").permitAll()
 
                 )
@@ -61,19 +68,24 @@ public class WebSecurityConfig {
                 );
         return http.build();
     }
-//
-//    @Bean
-//    public CorsConfigurationSource corsConfigurationSource() {
-//        CorsConfiguration config = new CorsConfiguration();
-//        config.setAllowedOrigins(List.of("http://localhost:5173"));
-//        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-//        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-//        config.setAllowCredentials(true); // needed if you use cookies or auth headers
-//
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", config);
-//        return source;
-//    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+            "http://localhost:5173",
+            "https://mayamanage.com",
+            "https://mayamanage-84da8.firebaseapp.com",
+            "https://mayamanage-84da8.web.app"
+        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 
       @Bean
       public JwtDecoder jwtDecoder() {
