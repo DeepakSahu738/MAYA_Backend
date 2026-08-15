@@ -21,10 +21,7 @@ import java.util.Set;
 public class CreatorAccessService {
 
     private static final Set<String> DEMO_USERNAMES = Set.of(
-        "fitlife_by_meera",
-        "techwithriya",
-        "the.monkey.who.left.hc.verma",
-        "travelwithkartik"
+        "fitlife_by_meera"
     );
 
     private final UserSocialAccountRepository socialAccountRepository;
