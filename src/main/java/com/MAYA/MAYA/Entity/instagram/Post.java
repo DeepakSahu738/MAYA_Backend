@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 public class Post {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "post_seq")
+    @SequenceGenerator(name = "post_seq", sequenceName = "posts_id_seq", allocationSize = 50)
     private Long id;
     
     @Column(name = "instagram_id", nullable = false, unique = true)

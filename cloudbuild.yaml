@@ -5,10 +5,10 @@ steps:
     args:
       - '-c'
       - |
-        if ! gcloud artifacts repositories describe maya-backend-repo --location=us-central1; then
+        if ! gcloud artifacts repositories describe maya-backend-repo --location=asia-southeast1; then
           gcloud artifacts repositories create maya-backend-repo \
             --repository-format=docker \
-            --location=us-central1 \
+            --location=asia-southeast1 \
             --quiet
         fi
 
@@ -18,14 +18,14 @@ steps:
     args:
       - '-c'
       - |
-        gcloud auth configure-docker us-central1-docker.pkg.dev
+        gcloud auth configure-docker asia-southeast1-docker.pkg.dev
 
   # Step 3: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       [
         'build',
-        '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
+        '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
         '.'
       ]
 
@@ -34,7 +34,7 @@ steps:
     args:
       [
         'push',
-        'us-central1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
+        'asia-southeast1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA'
       ]
 
   # Step 5: Deploy to Cloud Run with runtime secrets from Secret Manager
@@ -42,12 +42,12 @@ steps:
     args:
       [
         'run', 'deploy', 'maya-backend-service',
-        '--image', 'us-central1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
+        '--image', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/maya-backend-repo/maya-backend:$SHORT_SHA',
         '--platform', 'managed',
-        '--region', 'us-central1',
+        '--region', 'asia-southeast1',
         '--allow-unauthenticated',
         '--set-secrets',
-        'AIVEN_DB_PASSWORD=AIVEN_DB_PASSWORD:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest'
+        'AIVEN_DB_PASSWORD=AIVEN_DB_PASSWORD:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest,PHYLLO_BASE_URL=PHYLLO_BASE_URL:latest,PHYLLO_CLIENT_ID=PHYLLO_CLIENT_ID:latest,PHYLLO_CLIENT_SECRET=PHYLLO_CLIENT_SECRET:latest,PHYLLO_ENVIRONMENT=PHYLLO_ENVIRONMENT:latest'
       ]
 
 # Optional build options

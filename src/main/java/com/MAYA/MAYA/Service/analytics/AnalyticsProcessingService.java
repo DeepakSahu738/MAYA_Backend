@@ -93,11 +93,12 @@ public class AnalyticsProcessingService implements CommandLineRunner {
         }
         
         int stored = 0;
+        List<HashtagPerformance> batch = new ArrayList<>();
+        
         for (Map.Entry<String, List<Post>> entry : postsByHashtag.entrySet()) {
             String hashtag = entry.getKey();
             List<Post> tagPosts = entry.getValue();
             
-            // Compute metrics
             OptionalDouble avgReach = tagPosts.stream()
                 .map(Post::getMetrics)
                 .filter(m -> m.getReach() != null)
@@ -121,31 +122,29 @@ public class AnalyticsProcessingService implements CommandLineRunner {
                 .max(Comparator.naturalOrder())
                 .orElse(null);
             
-            // performance_score = (avg_reach × 0.4) + (avg_engagement_rate × 0.6)
             double perfScore = (avgReach.isPresent() ? avgReach.getAsDouble() * 0.4 : 0)
                 + (avgEngagement.isPresent() ? avgEngagement.getAsDouble() * 0.6 : 0);
             
-            // Upsert
-            HashtagPerformance hp = hashtagPerformanceRepository
-                .findByCreatorIdAndHashtag(creator.getId(), hashtag)
-                .orElse(HashtagPerformance.builder()
-                    .creator(creator)
-                    .hashtag(hashtag)
-                    .createdAt(LocalDateTime.now())
-                    .build());
+            HashtagPerformance hp = HashtagPerformance.builder()
+                .creator(creator)
+                .hashtag(hashtag)
+                .usageCount(tagPosts.size())
+                .avgReachWhenUsed(avgReach.isPresent() ? round(avgReach.getAsDouble()) : null)
+                .avgEngagementWhenUsed(avgEngagement.isPresent() ? round(avgEngagement.getAsDouble()) : null)
+                .avgSaveRateWhenUsed(avgSaveRate.isPresent() ? round(avgSaveRate.getAsDouble()) : null)
+                .lastUsedAt(lastUsed)
+                .performanceScore(round(perfScore))
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
             
-            hp.setUsageCount(tagPosts.size());
-            hp.setAvgReachWhenUsed(avgReach.isPresent() ? round(avgReach.getAsDouble()) : null);
-            hp.setAvgEngagementWhenUsed(avgEngagement.isPresent() ? round(avgEngagement.getAsDouble()) : null);
-            hp.setAvgSaveRateWhenUsed(avgSaveRate.isPresent() ? round(avgSaveRate.getAsDouble()) : null);
-            hp.setLastUsedAt(lastUsed);
-            hp.setPerformanceScore(round(perfScore));
-            hp.setUpdatedAt(LocalDateTime.now());
-            
-            hashtagPerformanceRepository.save(hp);
+            batch.add(hp);
             stored++;
         }
         
+        if (!batch.isEmpty()) {
+            hashtagPerformanceRepository.saveAll(batch);
+        }
         log.info("  → Stored {} hashtag performance records for {}", stored, creator.getUsername());
     }
     
@@ -158,6 +157,8 @@ public class AnalyticsProcessingService implements CommandLineRunner {
             .collect(Collectors.groupingBy(Comment::getUsername));
         
         int stored = 0;
+        List<TopCommenter> batch = new ArrayList<>();
+        
         for (Map.Entry<String, List<Comment>> entry : byUser.entrySet()) {
             String username = entry.getKey();
             List<Comment> userComments = entry.getValue();
@@ -177,29 +178,27 @@ public class AnalyticsProcessingService implements CommandLineRunner {
                 .max(Comparator.naturalOrder())
                 .orElse(null);
             
-            // superfan_score = (comment_count × 2) + (total_likes_received × 0.5)
             double superfanScore = (commentCount * 2.0) + (totalLikes * 0.5);
             
-            // Upsert
-            TopCommenter tc = topCommenterRepository
-                .findByCreatorIdAndUsername(creator.getId(), username)
-                .orElse(TopCommenter.builder()
-                    .creator(creator)
-                    .username(username)
-                    .createdAt(LocalDateTime.now())
-                    .build());
+            TopCommenter tc = TopCommenter.builder()
+                .creator(creator)
+                .username(username)
+                .commentCount(commentCount)
+                .totalLikesReceived(totalLikes)
+                .firstCommentedAt(firstCommented)
+                .lastCommentedAt(lastCommented)
+                .superfanScore(superfanScore)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
             
-            tc.setCommentCount(commentCount);
-            tc.setTotalLikesReceived(totalLikes);
-            tc.setFirstCommentedAt(firstCommented);
-            tc.setLastCommentedAt(lastCommented);
-            tc.setSuperfanScore(superfanScore);
-            tc.setUpdatedAt(LocalDateTime.now());
-            
-            topCommenterRepository.save(tc);
+            batch.add(tc);
             stored++;
         }
         
+        if (!batch.isEmpty()) {
+            topCommenterRepository.saveAll(batch);
+        }
         log.info("  → Stored {} top commenter records for {}", stored, creator.getUsername());
     }
     

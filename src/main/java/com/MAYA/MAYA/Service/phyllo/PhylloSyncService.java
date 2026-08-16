@@ -14,8 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Syncs data from Phyllo API into Maya's database.
@@ -167,23 +167,19 @@ public class PhylloSyncService {
             JsonNode posts = contentData.get("data");
             if (posts == null || !posts.isArray()) return phylloIdToPost;
 
-            int synced = 0;
+            // Build all post entities
+            List<Post> postBatch = new ArrayList<>();
             for (JsonNode postNode : posts) {
-                String phylloPostId = postNode.get("id").asText();
-
-                // Skip if already exists
-                if (postRepository.findByInstagramId(phylloPostId).isPresent()) {
-                    phylloIdToPost.put(phylloPostId, postRepository.findByInstagramId(phylloPostId).get());
-                    continue;
-                }
-
-                Post post = mapPhylloPost(postNode, creator);
-                post = postRepository.save(post);
-                phylloIdToPost.put(phylloPostId, post);
-                synced++;
+                postBatch.add(mapPhylloPost(postNode, creator));
             }
 
-            log.info("  → Synced {} new posts (total in response: {})", synced, posts.size());
+            // Batch insert
+            List<Post> saved = postRepository.saveAll(postBatch);
+            for (Post p : saved) {
+                phylloIdToPost.put(p.getInstagramId(), p);
+            }
+
+            log.info("  → Synced {} posts", saved.size());
         } catch (Exception e) {
             log.warn("  → Failed to sync posts: {}", e.getMessage());
         }
@@ -192,35 +188,33 @@ public class PhylloSyncService {
     }
 
     private void syncComments(String accountId, Creator creator, Map<String, Post> phylloIdToPost) {
-        int totalSynced = 0;
+        // Only fetch comments for last 15 posts
+        List<Post> recentPosts = phylloIdToPost.values().stream()
+            .sorted(Comparator.comparing(Post::getPostedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+            .limit(15)
+            .collect(Collectors.toList());
 
-        // Fetch comments per post (Phyllo requires both account_id and content_id)
-        for (Map.Entry<String, Post> entry : phylloIdToPost.entrySet()) {
-            String phylloPostId = entry.getKey();
-            Post post = entry.getValue();
+        List<Comment> allComments = new ArrayList<>();
 
+        for (Post post : recentPosts) {
             try {
-                JsonNode commentData = phylloService.fetchComments(accountId, phylloPostId, 100);
+                JsonNode commentData = phylloService.fetchComments(accountId, post.getInstagramId(), 100);
                 JsonNode comments = commentData.get("data");
                 if (comments == null || !comments.isArray()) continue;
 
                 for (JsonNode commentNode : comments) {
-                    String commentId = commentNode.get("id").asText();
-
-                    // Skip if exists
-                    if (commentRepository.findByInstagramId(commentId).isPresent()) continue;
-
-                    Comment comment = mapPhylloComment(commentNode, post, creator.getId());
-                    commentRepository.save(comment);
-                    totalSynced++;
+                    allComments.add(mapPhylloComment(commentNode, post, creator.getId()));
                 }
             } catch (Exception e) {
-                // Non-critical per post — continue with other posts
-                log.debug("  → No comments for post {}: {}", phylloPostId, e.getMessage());
+                // Non-critical — some posts may have no comments
             }
         }
 
-        log.info("  → Synced {} new comments across {} posts", totalSynced, phylloIdToPost.size());
+        // Batch insert all comments at once
+        if (!allComments.isEmpty()) {
+            commentRepository.saveAll(allComments);
+            log.info("  → Synced {} comments (from {} posts)", allComments.size(), recentPosts.size());
+        }
     }
 
     // --- Mappers: Phyllo JSON → Maya entities ---

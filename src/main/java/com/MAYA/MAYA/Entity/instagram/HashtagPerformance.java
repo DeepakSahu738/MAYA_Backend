@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 public class HashtagPerformance {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "hashtag_seq")
+    @SequenceGenerator(name = "hashtag_seq", sequenceName = "hashtag_performance_id_seq", allocationSize = 50)
     private Long id;
     
     @ManyToOne(fetch = FetchType.LAZY)

@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 public class TopCommenter {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "top_commenter_seq")
+    @SequenceGenerator(name = "top_commenter_seq", sequenceName = "top_commenters_id_seq", allocationSize = 50)
     private Long id;
     
     @ManyToOne(fetch = FetchType.LAZY)
