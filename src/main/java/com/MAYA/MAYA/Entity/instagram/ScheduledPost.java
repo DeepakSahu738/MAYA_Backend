@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 public class ScheduledPost {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "scheduled_post_seq")
+    @SequenceGenerator(name = "scheduled_post_seq", sequenceName = "scheduled_posts_id_seq", allocationSize = 50)
     private Long id;
     
     @ManyToOne(fetch = FetchType.LAZY)

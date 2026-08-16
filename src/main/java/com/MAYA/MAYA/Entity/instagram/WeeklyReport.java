@@ -18,7 +18,8 @@ import java.time.LocalDateTime;
 public class WeeklyReport {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "weekly_report_seq")
+    @SequenceGenerator(name = "weekly_report_seq", sequenceName = "weekly_reports_id_seq", allocationSize = 50)
     private Long id;
     
     @ManyToOne(fetch = FetchType.LAZY)

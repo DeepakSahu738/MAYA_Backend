@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 public class WeeklyGoal {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "weekly_goal_seq")
+    @SequenceGenerator(name = "weekly_goal_seq", sequenceName = "weekly_goals_id_seq", allocationSize = 50)
     private Long id;
 
     @Column(name = "user_id", nullable = false)

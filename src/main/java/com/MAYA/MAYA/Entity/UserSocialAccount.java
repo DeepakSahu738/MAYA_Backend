@@ -28,7 +28,8 @@ import java.time.LocalDateTime;
 public class UserSocialAccount {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "social_account_seq")
+    @SequenceGenerator(name = "social_account_seq", sequenceName = "user_social_accounts_id_seq", allocationSize = 50)
     private Long id;
 
     // FK to Maya's users table
