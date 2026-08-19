@@ -251,6 +251,33 @@ public class PhylloService {
     }
 
     /**
+     * Disconnect an account on Phyllo's side.
+     * This revokes the OAuth connection so the account no longer shows as connected in Phyllo.
+     *
+     * Endpoint: POST /v1/accounts/{id}/disconnect
+     *
+     * @param accountId - the Phyllo account ID to disconnect
+     * @return true if disconnect succeeded, false otherwise
+     */
+    public boolean disconnectAccount(String accountId) {
+        String url = baseUrl + "/v1/accounts/" + accountId + "/disconnect";
+
+        HttpEntity<Void> request = new HttpEntity<>(buildHeaders());
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            log.info("Disconnected Phyllo account: {} — status: {}", accountId, response.getStatusCode());
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.warn("Failed to disconnect Phyllo account {}: {} — {}", accountId, e.getStatusCode(), e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.warn("Failed to disconnect Phyllo account {}: {}", accountId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Fetch profile info for a connected account.
      *
      * @param accountId - the Phyllo account ID

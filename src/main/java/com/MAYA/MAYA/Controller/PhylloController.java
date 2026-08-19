@@ -288,6 +288,11 @@ public class PhylloController {
         account.setStatus("DISCONNECTED");
         socialAccountRepository.save(account);
 
+        // Disconnect on Phyllo's side (revoke OAuth connection)
+        if (account.getPhylloAccountId() != null) {
+            phylloService.disconnectAccount(account.getPhylloAccountId());
+        }
+
         // Deactivate the creator so it doesn't show in active queries
         if (account.getCreator() != null) {
             Creator creator = account.getCreator();
@@ -334,6 +339,11 @@ public class PhylloController {
         // Count data before deletion (for response)
         long postsCount = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId).size();
         long commentsCount = commentRepository.findByCreatorIdOrderByCommentedAtDesc(creatorId).size();
+
+        // Disconnect on Phyllo's side (revoke OAuth connection)
+        if (account.getPhylloAccountId() != null) {
+            phylloService.disconnectAccount(account.getPhylloAccountId());
+        }
 
         // Delete order matters (FK constraints — delete children first)
         commentRepository.deleteByCreatorId(creatorId);
