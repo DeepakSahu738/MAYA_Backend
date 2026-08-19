@@ -25,4 +25,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByPostIdAndIsQuestionTrueAndSentimentNot(Long postId, String sentiment);
     List<Comment> findByPostIdOrderByLikeCountDesc(Long postId);
     void deleteByCreatorId(Long creatorId);
+
+    @Query("SELECT c.instagramId FROM Comment c WHERE c.creatorId = :creatorId")
+    List<String> findInstagramIdsByCreatorId(Long creatorId);
 }

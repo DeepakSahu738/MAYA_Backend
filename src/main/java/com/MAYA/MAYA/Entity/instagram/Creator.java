@@ -92,4 +92,37 @@ public class Creator {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    // --- Data Freshness & Sync Status fields ---
+
+    /**
+     * Data freshness classification: RECENT, HISTORIC, or STALE.
+     * RECENT = latest post within 90 days
+     * HISTORIC = has posts but all older than 90 days
+     * STALE = no posts at all
+     */
+    @Column(name = "data_freshness")
+    private String dataFreshness = "STALE";
+
+    @Column(name = "latest_post_date")
+    private LocalDateTime latestPostDate;
+
+    @Column(name = "oldest_post_date")
+    private LocalDateTime oldestPostDate;
+
+    /**
+     * Sync lifecycle status: IDLE, SYNCING, COMPLETED, FAILED.
+     * Frontend polls this to show sync progress.
+     */
+    @Column(name = "sync_status")
+    private String syncStatus = "IDLE";
+
+    @Column(name = "sync_started_at")
+    private LocalDateTime syncStartedAt;
+
+    @Column(name = "sync_completed_at")
+    private LocalDateTime syncCompletedAt;
+
+    @Column(name = "sync_error", columnDefinition = "TEXT")
+    private String syncError;
 }

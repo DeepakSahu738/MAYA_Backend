@@ -368,7 +368,7 @@ public class PhylloController {
      * Frontend polls this after account connection to know when data is ready.
      *
      * GET /api/phyllo/sync-status/{creatorId}
-     * Response: { "status": "SYNCING" | "READY" | "NOT_CONNECTED", "postsCount": 0, "commentsCount": 0, "message": "..." }
+     * Response: { "syncStatus": "SYNCING"|"COMPLETED"|"FAILED"|"IDLE", "dataFreshness": "RECENT"|"HISTORIC"|"STALE", ... }
      */
     @GetMapping("/sync-status/{creatorId}")
     public ResponseEntity<?> getSyncStatus(@PathVariable Long creatorId, @AuthenticationPrincipal Jwt jwt) {
@@ -378,7 +378,7 @@ public class PhylloController {
         Creator creator = creatorRepository.findById(creatorId).orElse(null);
         if (creator == null) {
             return ResponseEntity.ok(Map.of(
-                "status", "NOT_CONNECTED",
+                "syncStatus", "NOT_FOUND",
                 "message", "Creator not found"
             ));
         }
@@ -390,30 +390,48 @@ public class PhylloController {
             return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
         }
 
-        // Count data to determine sync status
+        // Count data
         long postsCount = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId).size();
         long commentsCount = commentRepository.findByCreatorIdOrderByCommentedAtDesc(creatorId).size();
 
-        String status;
+        // Build status message based on sync lifecycle
+        String syncStatus = creator.getSyncStatus() != null ? creator.getSyncStatus() : "IDLE";
         String message;
 
-        if (postsCount == 0) {
-            status = "SYNCING";
-            message = "Fetching your posts from Instagram... This usually takes 30-60 seconds.";
-        } else if (commentsCount == 0) {
-            status = "SYNCING";
-            message = "Posts loaded! Now fetching your comments... Almost there.";
-        } else {
-            status = "READY";
-            message = String.format("All synced! %d posts and %d comments loaded.", postsCount, commentsCount);
+        switch (syncStatus) {
+            case "SYNCING":
+                if (postsCount == 0) {
+                    message = "Fetching your posts... This usually takes 30-60 seconds.";
+                } else if (commentsCount == 0) {
+                    message = "Posts loaded! Now fetching comments... Almost there.";
+                } else {
+                    message = "Syncing in progress...";
+                }
+                break;
+            case "COMPLETED":
+                message = String.format("All synced! %d posts and %d comments loaded.", postsCount, commentsCount);
+                break;
+            case "FAILED":
+                message = "Sync failed: " + (creator.getSyncError() != null ? creator.getSyncError() : "Unknown error");
+                break;
+            default:
+                message = postsCount > 0 ? "Data available." : "Waiting to sync.";
+                break;
         }
 
-        return ResponseEntity.ok(Map.of(
-            "status", status,
-            "postsCount", postsCount,
-            "commentsCount", commentsCount,
-            "message", message
-        ));
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("syncStatus", syncStatus);
+        response.put("dataFreshness", creator.getDataFreshness() != null ? creator.getDataFreshness() : "STALE");
+        response.put("postsCount", postsCount);
+        response.put("commentsCount", commentsCount);
+        response.put("message", message);
+        response.put("latestPostDate", creator.getLatestPostDate() != null ? creator.getLatestPostDate().toString() : null);
+        response.put("oldestPostDate", creator.getOldestPostDate() != null ? creator.getOldestPostDate().toString() : null);
+        response.put("syncStartedAt", creator.getSyncStartedAt() != null ? creator.getSyncStartedAt().toString() : null);
+        response.put("syncCompletedAt", creator.getSyncCompletedAt() != null ? creator.getSyncCompletedAt().toString() : null);
+        response.put("syncError", creator.getSyncError());
+
+        return ResponseEntity.ok(response);
     }
 
     /**

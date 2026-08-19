@@ -56,6 +56,12 @@ public class PhylloSyncService {
             return;
         }
 
+        // --- Sync Status: SYNCING ---
+        creator.setSyncStatus("SYNCING");
+        creator.setSyncStartedAt(LocalDateTime.now());
+        creator.setSyncError(null);
+        creatorRepository.save(creator);
+
         try {
             // Sync profile
             syncProfile(phylloAccountId, creator);
@@ -93,8 +99,15 @@ public class PhylloSyncService {
                 syncComments(phylloAccountId, creator, phylloIdToPost);
             }
 
+            // --- Compute Data Freshness ---
+            computeDataFreshness(creator);
+
             // Update last synced timestamp
             creator.setLastSyncedAt(LocalDateTime.now());
+
+            // --- Sync Status: COMPLETED ---
+            creator.setSyncStatus("COMPLETED");
+            creator.setSyncCompletedAt(LocalDateTime.now());
             creatorRepository.save(creator);
 
             // Update social account status
@@ -111,7 +124,55 @@ public class PhylloSyncService {
 
             log.info("Sync completed for creator: {} (@{})", creatorId, creator.getUsername());
         } catch (Exception e) {
+            // --- Sync Status: FAILED ---
+            creator.setSyncStatus("FAILED");
+            creator.setSyncCompletedAt(LocalDateTime.now());
+            creator.setSyncError(e.getMessage() != null ? e.getMessage() : "Unknown error");
+            creatorRepository.save(creator);
             log.error("Sync failed for Phyllo account: {}", phylloAccountId, e);
+        }
+    }
+
+    /**
+     * Computes data freshness based on the latest and oldest post dates.
+     * RECENT = latest post within 90 days
+     * HISTORIC = has posts but all older than 90 days
+     * STALE = no posts at all
+     */
+    private void computeDataFreshness(Creator creator) {
+        List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creator.getId());
+
+        if (posts.isEmpty()) {
+            creator.setDataFreshness("STALE");
+            creator.setLatestPostDate(null);
+            creator.setOldestPostDate(null);
+            log.info("  → Data freshness: STALE (no posts)");
+            return;
+        }
+
+        // Find latest and oldest post dates
+        LocalDateTime latestDate = posts.stream()
+            .map(Post::getPostedAt)
+            .filter(Objects::nonNull)
+            .max(LocalDateTime::compareTo)
+            .orElse(null);
+
+        LocalDateTime oldestDate = posts.stream()
+            .map(Post::getPostedAt)
+            .filter(Objects::nonNull)
+            .min(LocalDateTime::compareTo)
+            .orElse(null);
+
+        creator.setLatestPostDate(latestDate);
+        creator.setOldestPostDate(oldestDate);
+
+        // Classify freshness
+        if (latestDate != null && latestDate.isAfter(LocalDateTime.now().minusDays(90))) {
+            creator.setDataFreshness("RECENT");
+            log.info("  → Data freshness: RECENT (latest post: {})", latestDate);
+        } else {
+            creator.setDataFreshness("HISTORIC");
+            log.info("  → Data freshness: HISTORIC (latest post: {})", latestDate);
         }
     }
 
@@ -163,23 +224,69 @@ public class PhylloSyncService {
         Map<String, Post> phylloIdToPost = new HashMap<>();
 
         try {
-            JsonNode contentData = phylloService.fetchContents(accountId, 100);
-            JsonNode posts = contentData.get("data");
-            if (posts == null || !posts.isArray()) return phylloIdToPost;
+            // Get existing post IDs for this creator to avoid duplicates on reconnect
+            Set<String> existingPostIds = new HashSet<>(postRepository.findInstagramIdsByCreatorId(creator.getId()));
 
-            // Build all post entities
-            List<Post> postBatch = new ArrayList<>();
-            for (JsonNode postNode : posts) {
-                postBatch.add(mapPhylloPost(postNode, creator));
+            int limit = 100;
+            int offset = 0;
+            int totalFetched = 0;
+            int skipped = 0;
+            boolean hasMore = true;
+
+            while (hasMore) {
+                JsonNode contentData = phylloService.fetchContents(accountId, limit, offset);
+                JsonNode posts = contentData.get("data");
+                if (posts == null || !posts.isArray() || posts.size() == 0) break;
+
+                // Build post entities, skipping any that already exist
+                List<Post> newPosts = new ArrayList<>();
+                for (JsonNode postNode : posts) {
+                    String phylloPostId = postNode.get("id").asText();
+                    if (existingPostIds.contains(phylloPostId)) {
+                        skipped++;
+                        // Still add to result map so comments/analytics can reference them
+                        postRepository.findByInstagramId(phylloPostId).ifPresent(existing ->
+                            phylloIdToPost.put(existing.getInstagramId(), existing)
+                        );
+                        continue;
+                    }
+                    newPosts.add(mapPhylloPost(postNode, creator));
+                }
+
+                // Batch insert only new posts
+                if (!newPosts.isEmpty()) {
+                    List<Post> saved = postRepository.saveAll(newPosts);
+                    for (Post p : saved) {
+                        phylloIdToPost.put(p.getInstagramId(), p);
+                        existingPostIds.add(p.getInstagramId()); // prevent double-insert across pages
+                    }
+                }
+
+                totalFetched += posts.size();
+
+                // Check pagination metadata — Phyllo returns metadata.total or we check if page is full
+                JsonNode metadata = contentData.get("metadata");
+                if (metadata != null && metadata.has("total")) {
+                    int total = metadata.get("total").asInt();
+                    if (totalFetched >= total) {
+                        hasMore = false;
+                    }
+                } else {
+                    // No metadata — stop if we got fewer items than the limit (last page)
+                    if (posts.size() < limit) {
+                        hasMore = false;
+                    }
+                }
+
+                offset += posts.size();
+                log.info("  → Fetched page: offset={}, got={}, totalSoFar={}", offset - posts.size(), posts.size(), totalFetched);
             }
 
-            // Batch insert
-            List<Post> saved = postRepository.saveAll(postBatch);
-            for (Post p : saved) {
-                phylloIdToPost.put(p.getInstagramId(), p);
+            int newCount = phylloIdToPost.size() - skipped;
+            if (newCount > 0 || skipped > 0) {
+                log.info("  → Synced {} new posts, skipped {} existing (total fetched from API: {})", 
+                    phylloIdToPost.size() - skipped, skipped, totalFetched);
             }
-
-            log.info("  → Synced {} posts", saved.size());
         } catch (Exception e) {
             log.warn("  → Failed to sync posts: {}", e.getMessage());
         }
@@ -194,7 +301,11 @@ public class PhylloSyncService {
             .limit(15)
             .collect(Collectors.toList());
 
-        List<Comment> allComments = new ArrayList<>();
+        // Get existing comment IDs to avoid duplicates on reconnect
+        Set<String> existingCommentIds = new HashSet<>(commentRepository.findInstagramIdsByCreatorId(creator.getId()));
+
+        List<Comment> newComments = new ArrayList<>();
+        int skipped = 0;
 
         for (Post post : recentPosts) {
             try {
@@ -203,17 +314,24 @@ public class PhylloSyncService {
                 if (comments == null || !comments.isArray()) continue;
 
                 for (JsonNode commentNode : comments) {
-                    allComments.add(mapPhylloComment(commentNode, post, creator.getId()));
+                    String commentId = commentNode.get("id").asText();
+                    if (existingCommentIds.contains(commentId)) {
+                        skipped++;
+                        continue;
+                    }
+                    newComments.add(mapPhylloComment(commentNode, post, creator.getId()));
                 }
             } catch (Exception e) {
                 // Non-critical — some posts may have no comments
             }
         }
 
-        // Batch insert all comments at once
-        if (!allComments.isEmpty()) {
-            commentRepository.saveAll(allComments);
-            log.info("  → Synced {} comments (from {} posts)", allComments.size(), recentPosts.size());
+        // Batch insert only new comments
+        if (!newComments.isEmpty()) {
+            commentRepository.saveAll(newComments);
+            log.info("  → Synced {} new comments (skipped {} existing, from {} posts)", newComments.size(), skipped, recentPosts.size());
+        } else if (skipped > 0) {
+            log.info("  → All comments already exist — skipped {} (reconnect scenario)", skipped);
         }
     }
 
