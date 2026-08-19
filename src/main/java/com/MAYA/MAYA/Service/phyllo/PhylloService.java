@@ -168,7 +168,19 @@ public class PhylloService {
      * @return JsonNode containing the posts data array
      */
     public JsonNode fetchContents(String accountId, int limit) {
-        String url = baseUrl + "/v1/social/contents?account_id=" + accountId + "&limit=" + limit;
+        return fetchContents(accountId, limit, 0);
+    }
+
+    /**
+     * Fetch social contents (posts) for a connected account with offset pagination.
+     *
+     * @param accountId - the Phyllo account ID
+     * @param limit     - number of posts to fetch per page (max 100)
+     * @param offset    - offset for pagination (0-based)
+     * @return JsonNode containing the posts data array and metadata
+     */
+    public JsonNode fetchContents(String accountId, int limit, int offset) {
+        String url = baseUrl + "/v1/social/contents?account_id=" + accountId + "&limit=" + limit + "&offset=" + offset;
 
         HttpEntity<Void> request = new HttpEntity<>(buildHeaders());
 
@@ -176,7 +188,7 @@ public class PhylloService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
             return objectMapper.readTree(response.getBody());
         } catch (Exception e) {
-            log.error("Failed to fetch contents for account: {}", accountId, e);
+            log.error("Failed to fetch contents for account: {} (offset: {})", accountId, offset, e);
             throw new RuntimeException("Failed to fetch contents: " + e.getMessage());
         }
     }

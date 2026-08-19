@@ -25,4 +25,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByCreatorIdAndHasQuestionTrue(Long creatorId);
     List<Post> findByCreatorIdAndMediaProductType(Long creatorId, String mediaProductType);
     void deleteByCreatorId(Long creatorId);
+
+    @Query("SELECT p.instagramId FROM Post p WHERE p.creator.id = :creatorId")
+    List<String> findInstagramIdsByCreatorId(Long creatorId);
 }
