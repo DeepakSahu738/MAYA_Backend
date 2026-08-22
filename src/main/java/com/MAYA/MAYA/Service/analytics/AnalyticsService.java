@@ -3,9 +3,11 @@ package com.MAYA.MAYA.Service.analytics;
 import com.MAYA.MAYA.DTO.analytics.SentimentBreakdownDTO;
 import com.MAYA.MAYA.DTO.analytics.TimeSeriesMetricDTO;
 import com.MAYA.MAYA.Entity.instagram.Comment;
+import com.MAYA.MAYA.Entity.instagram.Creator;
 import com.MAYA.MAYA.Entity.instagram.Post;
 import com.MAYA.MAYA.Entity.instagram.PostMetrics;
 import com.MAYA.MAYA.Repository.instagram.CommentRepository;
+import com.MAYA.MAYA.Repository.instagram.CreatorRepository;
 import com.MAYA.MAYA.Repository.instagram.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class AnalyticsService {
     
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final CreatorRepository creatorRepository;
     
     // ===== Metric #1: Save Rate =====
     public TimeSeriesMetricDTO calculateSaveRate(Long creatorId, Integer postCount) {
@@ -247,10 +250,19 @@ public class AnalyticsService {
     // ===== Metric #11: Overall Account Engagement Rate =====
     public TimeSeriesMetricDTO calculateOverallEngagement(Long creatorId, Integer postCount) {
         List<Post> posts = getRecentPosts(creatorId, postCount);
-        
+
+        // Try reach-based ER first (only using posts with reliable reach)
         OptionalDouble avgEr = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getReach() != null && m.getReach() > 0)
+            .filter(m -> m != null && m.getReach() != null && m.getReach() > 0)
+            .filter(m -> {
+                // Validate: reach must be >= total engagement, otherwise data is garbage
+                int likes = m.getLikes() != null ? m.getLikes() : 0;
+                int comments = m.getComments() != null ? m.getComments() : 0;
+                int saves = m.getSaves() != null ? m.getSaves() : 0;
+                int shares = m.getShares() != null ? m.getShares() : 0;
+                return m.getReach() >= (likes + comments + saves + shares);
+            })
             .mapToDouble(m -> {
                 int likes = m.getLikes() != null ? m.getLikes() : 0;
                 int comments = m.getComments() != null ? m.getComments() : 0;
@@ -259,10 +271,32 @@ public class AnalyticsService {
                 return (likes + comments + saves + shares) * 100.0 / m.getReach();
             })
             .average();
-        
-        Double currentValue = avgEr.isPresent() ? round(avgEr.getAsDouble()) : null;
+
+        Double currentValue;
+        if (avgEr.isPresent()) {
+            currentValue = round(Math.min(avgEr.getAsDouble(), 100.0));
+        } else {
+            // Fallback: use follower count as denominator (industry-standard approach)
+            Creator creator = creatorRepository.findById(creatorId).orElse(null);
+            if (creator != null && creator.getFollowerCount() != null && creator.getFollowerCount() > 0) {
+                OptionalDouble followerEr = posts.stream()
+                    .map(Post::getMetrics)
+                    .filter(java.util.Objects::nonNull)
+                    .mapToDouble(m -> {
+                        int likes = m.getLikes() != null ? m.getLikes() : 0;
+                        int comments = m.getComments() != null ? m.getComments() : 0;
+                        int saves = m.getSaves() != null ? m.getSaves() : 0;
+                        int shares = m.getShares() != null ? m.getShares() : 0;
+                        return (likes + comments + saves + shares) * 100.0 / creator.getFollowerCount();
+                    })
+                    .average();
+                currentValue = followerEr.isPresent() ? round(followerEr.getAsDouble()) : null;
+            } else {
+                currentValue = null; // Neither reach nor followers available
+            }
+        }
+
         Double delta = computeWeeklyDelta(creatorId, this::postEngagementRate);
-        
         return buildMetric("overall_engagement_rate", currentValue, delta, "%");
     }
     
