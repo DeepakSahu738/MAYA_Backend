@@ -81,6 +81,31 @@ public class WeeklyGoalController {
         ));
     }
 
+    /**
+     * DELETE /api/goals/reset?creatorId=9
+     * Resets (deletes) the weekly goal for the current week back to 0.
+     */
+    @DeleteMapping("/reset")
+    public ResponseEntity<?> resetGoal(@RequestParam Long creatorId, @AuthenticationPrincipal Jwt jwt) {
+        Long userId = extractUserId(jwt);
+        LocalDate weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
+
+        Optional<WeeklyGoal> goal = weeklyGoalRepository.findByUserIdAndCreatorIdAndWeekStart(userId, creatorId, weekStart);
+
+        if (goal.isPresent()) {
+            weeklyGoalRepository.delete(goal.get());
+            return ResponseEntity.ok(Map.of(
+                "message", "Goal reset successfully",
+                "weekStart", weekStart.toString()
+            ));
+        } else {
+            return ResponseEntity.ok(Map.of(
+                "message", "No goal found for this week — nothing to reset",
+                "weekStart", weekStart.toString()
+            ));
+        }
+    }
+
     record SetGoalRequest(Long creatorId, Integer target) {}
 
     private Long extractUserId(Jwt jwt) {
