@@ -250,16 +250,20 @@ public class NightlySyncJob {
 
             // Compute rates
             Integer reach = metrics.getReach();
-            if (metrics.getSaves() != null && reach != null && reach > 0)
-                metrics.setSaveRate(metrics.getSaves() * 100.0 / reach);
-            if (metrics.getShares() != null && reach != null && reach > 0)
-                metrics.setShareRate(metrics.getShares() * 100.0 / reach);
-            if (reach != null && reach > 0) {
-                int likes = metrics.getLikes() != null ? metrics.getLikes() : 0;
-                int comments = metrics.getComments() != null ? metrics.getComments() : 0;
-                int saves = metrics.getSaves() != null ? metrics.getSaves() : 0;
-                int shares = metrics.getShares() != null ? metrics.getShares() : 0;
-                metrics.setEngagementRate((likes + comments + saves + shares) * 100.0 / reach);
+            int likes = metrics.getLikes() != null ? metrics.getLikes() : 0;
+            int comments = metrics.getComments() != null ? metrics.getComments() : 0;
+            int saves = metrics.getSaves() != null ? metrics.getSaves() : 0;
+            int shares = metrics.getShares() != null ? metrics.getShares() : 0;
+            int totalEngagement = likes + comments + saves + shares;
+
+            // Validate reach: must be >= total engagement, otherwise unreliable
+            boolean reachReliable = reach != null && reach > 0 && reach >= totalEngagement;
+            if (reachReliable) {
+                if (metrics.getSaves() != null)
+                    metrics.setSaveRate(Math.min(metrics.getSaves() * 100.0 / reach, 100.0));
+                if (metrics.getShares() != null)
+                    metrics.setShareRate(Math.min(metrics.getShares() * 100.0 / reach, 100.0));
+                metrics.setEngagementRate(Math.min(totalEngagement * 100.0 / reach, 100.0));
             }
 
             post.setMetrics(metrics);

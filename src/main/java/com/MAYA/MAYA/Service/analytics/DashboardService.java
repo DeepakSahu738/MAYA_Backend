@@ -161,14 +161,14 @@ public class DashboardService {
         OptionalDouble imageEr = posts.stream()
             .filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType()))
             .map(Post::getMetrics)
-            .filter(m -> m.getEngagementRate() != null)
+            .filter(m -> m != null && m.getEngagementRate() != null && m.getEngagementRate() <= 100.0)
             .mapToDouble(PostMetrics::getEngagementRate)
             .average();
 
         OptionalDouble videoEr = posts.stream()
             .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
             .map(Post::getMetrics)
-            .filter(m -> m.getEngagementRate() != null)
+            .filter(m -> m != null && m.getEngagementRate() != null && m.getEngagementRate() <= 100.0)
             .mapToDouble(PostMetrics::getEngagementRate)
             .average();
 
@@ -451,7 +451,7 @@ public class DashboardService {
         if (posts.isEmpty()) return null;
         OptionalDouble avg = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getEngagementRate() != null)
+            .filter(m -> m != null && m.getEngagementRate() != null && m.getEngagementRate() <= 100.0)
             .mapToDouble(PostMetrics::getEngagementRate)
             .average();
         return avg.isPresent() ? round(avg.getAsDouble()) : null;

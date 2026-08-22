@@ -289,14 +289,19 @@ public class SnapshotAnalyticsService {
         int comments = m.getComments() != null ? m.getComments() : 0;
         int saves = m.getSaves() != null ? m.getSaves() : 0;
         int shares = m.getShares() != null ? m.getShares() : 0;
-        return (likes + comments + saves + shares) * 100.0 / m.getReach();
+        int totalEngagement = likes + comments + saves + shares;
+        // If reach < total engagement, data is unreliable — return 0
+        if (m.getReach() < totalEngagement) return 0.0;
+        double er = totalEngagement * 100.0 / m.getReach();
+        return Math.min(er, 100.0); // cap at 100%
     }
     
     private double avgEngagementForPosts(List<Post> posts) {
         return posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getReach() != null && m.getReach() > 0)
+            .filter(m -> m != null && m.getReach() != null && m.getReach() > 0)
             .mapToDouble(this::computeEngagementRate)
+            .filter(er -> er <= 100.0) // exclude unreliable data
             .average()
             .orElse(0.0);
     }

@@ -428,17 +428,25 @@ public class PhylloSyncService {
 
     private void computeRates(PostMetrics metrics) {
         Integer reach = metrics.getReach();
-        if (metrics.getSaves() != null && reach != null && reach > 0)
-            metrics.setSaveRate(metrics.getSaves() * 100.0 / reach);
-        if (metrics.getShares() != null && reach != null && reach > 0)
-            metrics.setShareRate(metrics.getShares() * 100.0 / reach);
-        if (reach != null && reach > 0) {
-            int likes = metrics.getLikes() != null ? metrics.getLikes() : 0;
-            int comments = metrics.getComments() != null ? metrics.getComments() : 0;
-            int saves = metrics.getSaves() != null ? metrics.getSaves() : 0;
-            int shares = metrics.getShares() != null ? metrics.getShares() : 0;
-            metrics.setEngagementRate((likes + comments + saves + shares) * 100.0 / reach);
+        int likes = metrics.getLikes() != null ? metrics.getLikes() : 0;
+        int comments = metrics.getComments() != null ? metrics.getComments() : 0;
+        int saves = metrics.getSaves() != null ? metrics.getSaves() : 0;
+        int shares = metrics.getShares() != null ? metrics.getShares() : 0;
+        int totalEngagement = likes + comments + saves + shares;
+
+        // Validate reach: if reach < totalEngagement, it's clearly bad data from the platform
+        // Treat it as null (unreliable) rather than producing inflated rates
+        boolean reachReliable = reach != null && reach > 0 && reach >= totalEngagement;
+
+        if (reachReliable) {
+            if (metrics.getSaves() != null)
+                metrics.setSaveRate(Math.min(metrics.getSaves() * 100.0 / reach, 100.0));
+            if (metrics.getShares() != null)
+                metrics.setShareRate(Math.min(metrics.getShares() * 100.0 / reach, 100.0));
+            double er = totalEngagement * 100.0 / reach;
+            metrics.setEngagementRate(Math.min(er, 100.0)); // cap at 100%
         }
+        // If reach is unreliable, leave rates as null — dashboard will handle gracefully
     }
 
     private void detectCta(Post post, String caption) {
