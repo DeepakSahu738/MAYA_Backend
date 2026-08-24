@@ -58,6 +58,24 @@ public class jwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * Generate JWT directly from a user entity (used after OTP verification / auto-login).
+     */
+    public String generateTokenForUser(user user) {
+        String role = user.getRole() != null ? user.getRole().name() : "USER";
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION_LOGGED);
+
+        return Jwts.builder()
+                .setSubject(user.getEmail())
+                .claim("userID", user.getUserId())
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(SignatureAlgorithm.HS256, JWT_SECRET)
+                .compact();
+    }
+
     public long getUserIDFromToken(String token) {
         return Jwts.parser()
                 .setSigningKey(JWT_SECRET)

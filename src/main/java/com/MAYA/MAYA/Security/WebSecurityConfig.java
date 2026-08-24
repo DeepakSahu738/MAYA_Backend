@@ -50,7 +50,7 @@ public class WebSecurityConfig {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/auth/login", "/auth/registerUser").permitAll()
+                        .requestMatchers("/auth/login", "/auth/registerUser", "/auth/send-otp", "/auth/verify-otp").permitAll()
                         .requestMatchers("/auth/**").authenticated()
                         .requestMatchers("/api/content/**").authenticated()
                         .requestMatchers("/api/analytics/**").permitAll()

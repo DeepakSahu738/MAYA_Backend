@@ -10,4 +10,5 @@ import java.util.Optional;
 @Repository
 public interface WeeklyGoalRepository extends JpaRepository<WeeklyGoal, Long> {
     Optional<WeeklyGoal> findByUserIdAndCreatorIdAndWeekStart(Long userId, Long creatorId, LocalDate weekStart);
+    void deleteByUserId(Long userId);
 }
