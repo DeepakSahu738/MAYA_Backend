@@ -99,7 +99,7 @@ public class userController {
     }
 
     @GetMapping("/getAllUsers")
-    private ResponseEntity<List<user>> getAllUsers() {
+    public ResponseEntity<List<user>> getAllUsers() {
         System.out.println("yaha aaya toh tha ");
         try {
             List<user> userList = new ArrayList<>();
@@ -116,7 +116,7 @@ public class userController {
 
 
     @GetMapping("/getUserById/{id}")
-    private ResponseEntity<user> getUserById(@PathVariable Long id) {
+    public ResponseEntity<user> getUserById(@PathVariable Long id) {
         try {
             Optional<user> pointeduser = userRepository.findById(id);
             if (pointeduser.isEmpty()) {
@@ -132,7 +132,7 @@ public class userController {
     }
 
     @PostMapping("/registerUser")
-    private ResponseEntity<?> adduser(@RequestBody user user1) {
+    public ResponseEntity<?> adduser(@RequestBody user user1) {
         // Legacy endpoint — redirect to OTP flow
         return ResponseEntity.status(HttpStatus.GONE)
             .body(Map.of("error", "Direct registration disabled. Use /auth/send-otp instead."));
@@ -267,7 +267,7 @@ public class userController {
 
 
     @PutMapping("/updateUserById/{id}")
-    private ResponseEntity<user> updateUser(@PathVariable long id, @RequestBody user newUser) {
+    public ResponseEntity<user> updateUser(@PathVariable long id, @RequestBody user newUser) {
         Optional<user> pointeduser = userRepository.findById(id);
         if (pointeduser.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
@@ -285,7 +285,7 @@ public class userController {
 
     @DeleteMapping("/deleteUserById/{id}")
     @Transactional
-    private ResponseEntity<?> deleteUser(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         // Verify the JWT user matches the requested deletion
         Long jwtUserId = extractUserId(jwt);
         if (!jwtUserId.equals(id)) {
@@ -352,13 +352,13 @@ public class userController {
     }
 
     @GetMapping("/genAiResponse")
-    private Mono<String> getAiResponse()
+    public Mono<String> getAiResponse()
     {
         return genAi.getGenAiResponse();
     }
 
     @GetMapping("/langChatResponse")
-    private String getLangChatResponse(@RequestParam(value = "message", defaultValue = "What time is it now?") String prompt)
+    public String getLangChatResponse(@RequestParam(value = "message", defaultValue = "What time is it now?") String prompt)
     {
         return langChainServiceNew.chat(prompt);
 
