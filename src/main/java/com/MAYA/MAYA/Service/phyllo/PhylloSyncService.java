@@ -43,7 +43,8 @@ public class PhylloSyncService {
 
     // Timing constants
     private static final long INITIAL_DELAY_MS = 10_000;        // 10 seconds before first fetch
-    private static final long HISTORIC_WAIT_MS = 300_000;       // 5 minutes after historic request
+    private static final long HISTORIC_WAIT_MS = 180_000;       // 3 minutes after historic request
+    private static final long COMMENTS_DELAY_MS = 60_000;       // 1 minute before fetching comments
     private static final long RETRY_DELAY_MS = 1_800_000;       // 30 minutes for final retry
 
     /**
@@ -108,6 +109,9 @@ public class PhylloSyncService {
 
             // Sync comments (for whatever posts we have)
             if (!phylloIdToPost.isEmpty()) {
+                // Wait 1 minute for Phyllo to index comments after posts are available
+                log.info("  → Waiting 1 minute for Phyllo to index comments...");
+                Thread.sleep(COMMENTS_DELAY_MS);
                 syncComments(phylloAccountId, creator, phylloIdToPost);
             }
 
@@ -155,7 +159,7 @@ public class PhylloSyncService {
 
     /**
      * Retry sync — called 30 min after initial sync if historic data wasn't ready.
-     * Only fetches posts (profile already synced).
+     * Fetches any new posts + comments. No email notification (user already got one).
      */
     @Async
     public void retrySyncPosts(String phylloAccountId, Long creatorId) {
@@ -170,6 +174,8 @@ public class PhylloSyncService {
             if (!phylloIdToPost.isEmpty()) {
                 log.info("Retry sync got {} posts for account: {}", phylloIdToPost.size(), phylloAccountId);
 
+                // Wait 1 min for comments to be indexed too
+                Thread.sleep(COMMENTS_DELAY_MS);
                 syncComments(phylloAccountId, creator, phylloIdToPost);
                 computeDataFreshness(creator);
                 updateSyncStatus(creatorId, "COMPLETED", null);
@@ -183,7 +189,7 @@ public class PhylloSyncService {
                 });
 
                 analyticsProcessingService.processCreatorAnalytics(creator);
-                sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
+                // No email for retry — user already received the initial sync email
             } else {
                 log.warn("Retry sync still found 0 posts for account: {} — giving up", phylloAccountId);
                 updateSyncStatus(creatorId, "COMPLETED", null); // Mark as done anyway
