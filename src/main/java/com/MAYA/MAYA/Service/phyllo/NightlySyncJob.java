@@ -102,6 +102,7 @@ public class NightlySyncJob {
                 // 2. DELETE old posts + comments → batch INSERT fresh
                 commentRepository.deleteByCreatorId(creatorId);
                 postRepository.deleteByCreatorId(creatorId);
+                postRepository.flush(); // Force DELETE to execute in DB before INSERT
                 log.info("  → Cleared old posts + comments for creator {}", creatorId);
 
                 // Fetch fresh posts from Phyllo
