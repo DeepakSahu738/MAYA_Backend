@@ -418,6 +418,9 @@ public class PhylloController {
                     message = "Syncing in progress...";
                 }
                 break;
+            case "SYNCING_WAITING":
+                message = "Your account has older content. Fetching full history — this may take 5-6 minutes. We'll notify you via email when ready.";
+                break;
             case "COMPLETED":
                 message = String.format("All synced! %d posts and %d comments loaded.", postsCount, commentsCount);
                 break;

@@ -65,4 +65,50 @@ public class EmailService {
             </div>
             """.formatted(otp);
     }
+
+    /**
+     * Send notification when data sync is complete.
+     */
+    public boolean sendSyncCompleteEmail(String toEmail, String username, String platform, int postsCount) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject("Maya - Your " + platform + " data is ready!");
+            helper.setText(buildSyncCompleteBody(username, platform, postsCount), true);
+
+            mailSender.send(message);
+            log.info("Sync complete email sent to: {}", toEmail);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send sync complete email to {}: {}", toEmail, e.getMessage());
+            return false;
+        }
+    }
+
+    private String buildSyncCompleteBody(String username, String platform, int postsCount) {
+        return """
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+                <h2 style="color: #1a1a2e; margin-bottom: 8px;">Your data is ready!</h2>
+                <p style="color: #555; font-size: 15px; line-height: 1.5;">
+                    We've finished syncing your %s account <strong>@%s</strong>.
+                </p>
+                <div style="background: #f0fdf4; border-radius: 12px; padding: 20px; margin: 24px 0; border-left: 4px solid #22c55e;">
+                    <p style="margin: 0; color: #166534; font-size: 15px;">
+                        <strong>%d posts</strong> synced and analyzed successfully.
+                    </p>
+                </div>
+                <p style="color: #555; font-size: 15px; line-height: 1.5;">
+                    Your analytics dashboard, AI insights, and content recommendations are now available.
+                </p>
+                <a href="https://mayamanage.com/dashboard" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
+                    View Your Dashboard
+                </a>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+                <p style="color: #aaa; font-size: 12px;">Maya - Your AI Growth Partner</p>
+            </div>
+            """.formatted(platform, username, postsCount);
+    }
 }

@@ -4,13 +4,14 @@ import com.MAYA.MAYA.Entity.UserSocialAccount;
 import com.MAYA.MAYA.Entity.instagram.*;
 import com.MAYA.MAYA.Repository.UserSocialAccountRepository;
 import com.MAYA.MAYA.Repository.instagram.*;
+import com.MAYA.MAYA.Service.EmailService;
 import com.MAYA.MAYA.Service.analytics.AnalyticsProcessingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,16 +38,25 @@ public class PhylloSyncService {
     private final CommentRepository commentRepository;
     private final UserSocialAccountRepository socialAccountRepository;
     private final AnalyticsProcessingService analyticsProcessingService;
+    private final TransactionTemplate transactionTemplate;
+    private final EmailService emailService;
+
+    // Timing constants
+    private static final long INITIAL_DELAY_MS = 10_000;        // 10 seconds before first fetch
+    private static final long HISTORIC_WAIT_MS = 300_000;       // 5 minutes after historic request
+    private static final long RETRY_DELAY_MS = 1_800_000;       // 30 minutes for final retry
 
     /**
      * Full sync for a connected account.
      * Fetches profile, posts, and comments from Phyllo and stores in Maya DB.
      *
+     * NO @Transactional here — we use TransactionTemplate for status updates
+     * so they're immediately visible to other threads (frontend polling).
+     *
      * @param phylloAccountId - the connected account's Phyllo ID
      * @param creatorId       - the Maya creator entity ID to store data under
      */
     @Async
-    @Transactional
     public void syncAccount(String phylloAccountId, Long creatorId) {
         log.info("Starting sync for Phyllo account: {} → creator: {}", phylloAccountId, creatorId);
 
@@ -56,38 +66,40 @@ public class PhylloSyncService {
             return;
         }
 
-        // --- Sync Status: SYNCING ---
-        creator.setSyncStatus("SYNCING");
-        creator.setSyncStartedAt(LocalDateTime.now());
-        creator.setSyncError(null);
-        creatorRepository.save(creator);
+        // --- Sync Status: SYNCING (committed immediately, visible to frontend) ---
+        updateSyncStatus(creatorId, "SYNCING", null);
 
         try {
-            // Sync profile
+            // Sync profile first (no delay needed for profile)
             syncProfile(phylloAccountId, creator);
 
-            // Phase 1: Sync posts (last 90 days)
+            // Wait 10 seconds for Phyllo to index content after OAuth connection
+            log.info("  → Waiting 10 seconds for Phyllo to index content...");
+            Thread.sleep(INITIAL_DELAY_MS);
+
+            // Phase 1: Fetch posts
             Map<String, Post> phylloIdToPost = syncPosts(phylloAccountId, creator);
 
-            // If no posts returned — account likely has no recent data (older than 90 days)
-            // Trigger historic fetch, wait, then retry
+            // If no posts returned — request historic data and wait 5 minutes
             if (phylloIdToPost.isEmpty()) {
                 log.info("No recent posts found for account: {} — requesting historic data...", phylloAccountId);
                 boolean historicRequested = phylloService.requestHistoricData(phylloAccountId);
 
                 if (historicRequested) {
-                    // Wait for Phyllo to process (poll with backoff — max 90 seconds)
-                    int attempts = 0;
-                    int maxAttempts = 6;
-                    while (phylloIdToPost.isEmpty() && attempts < maxAttempts) {
-                        attempts++;
-                        log.info("Waiting for historic data... attempt {}/{}", attempts, maxAttempts);
-                        Thread.sleep(15000); // wait 15 seconds between retries
-                        phylloIdToPost = syncPosts(phylloAccountId, creator);
-                    }
+                    // Update status so frontend knows we're in the long wait
+                    updateSyncStatus(creatorId, "SYNCING_WAITING", null);
+
+                    // Wait 5 minutes for Phyllo to process historic data
+                    log.info("  → Waiting 5 minutes for Phyllo to index historic data...");
+                    Thread.sleep(HISTORIC_WAIT_MS);
+
+                    // Try fetching again
+                    phylloIdToPost = syncPosts(phylloAccountId, creator);
 
                     if (phylloIdToPost.isEmpty()) {
-                        log.warn("Historic data not yet available for account: {} — will be picked up on next sync", phylloAccountId);
+                        log.warn("Historic data not yet available after 5 min for account: {}", phylloAccountId);
+                        // Schedule a final retry in 30 minutes
+                        scheduleRetrySync(phylloAccountId, creatorId);
                     } else {
                         log.info("Historic data arrived! Synced {} posts for account: {}", phylloIdToPost.size(), phylloAccountId);
                     }
@@ -102,13 +114,17 @@ public class PhylloSyncService {
             // --- Compute Data Freshness ---
             computeDataFreshness(creator);
 
-            // Update last synced timestamp
-            creator.setLastSyncedAt(LocalDateTime.now());
-
             // --- Sync Status: COMPLETED ---
-            creator.setSyncStatus("COMPLETED");
-            creator.setSyncCompletedAt(LocalDateTime.now());
-            creatorRepository.save(creator);
+            updateSyncStatus(creatorId, "COMPLETED", null);
+
+            // Update last synced timestamp
+            transactionTemplate.executeWithoutResult(status -> {
+                Creator c = creatorRepository.findById(creatorId).orElse(null);
+                if (c != null) {
+                    c.setLastSyncedAt(LocalDateTime.now());
+                    creatorRepository.save(c);
+                }
+            });
 
             // Update social account status
             socialAccountRepository.findByPhylloAccountId(phylloAccountId).ifPresent(account -> {
@@ -116,20 +132,133 @@ public class PhylloSyncService {
                 socialAccountRepository.save(account);
             });
 
-            // Generate analytics (hashtags, top commenters, weekly report) for this creator
+            // Generate analytics
             if (!phylloIdToPost.isEmpty()) {
                 log.info("Computing analytics for creator: {} (@{})", creatorId, creator.getUsername());
                 analyticsProcessingService.processCreatorAnalytics(creator);
             }
 
             log.info("Sync completed for creator: {} (@{})", creatorId, creator.getUsername());
+
+            // Send email notification
+            sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            updateSyncStatus(creatorId, "FAILED", "Sync interrupted");
+            log.error("Sync interrupted for Phyllo account: {}", phylloAccountId);
         } catch (Exception e) {
-            // --- Sync Status: FAILED ---
-            creator.setSyncStatus("FAILED");
-            creator.setSyncCompletedAt(LocalDateTime.now());
-            creator.setSyncError(e.getMessage() != null ? e.getMessage() : "Unknown error");
-            creatorRepository.save(creator);
+            updateSyncStatus(creatorId, "FAILED", e.getMessage() != null ? e.getMessage() : "Unknown error");
             log.error("Sync failed for Phyllo account: {}", phylloAccountId, e);
+        }
+    }
+
+    /**
+     * Retry sync — called 30 min after initial sync if historic data wasn't ready.
+     * Only fetches posts (profile already synced).
+     */
+    @Async
+    public void retrySyncPosts(String phylloAccountId, Long creatorId) {
+        log.info("Retry sync for Phyllo account: {} → creator: {}", phylloAccountId, creatorId);
+
+        Creator creator = creatorRepository.findById(creatorId).orElse(null);
+        if (creator == null) return;
+
+        try {
+            Map<String, Post> phylloIdToPost = syncPosts(phylloAccountId, creator);
+
+            if (!phylloIdToPost.isEmpty()) {
+                log.info("Retry sync got {} posts for account: {}", phylloIdToPost.size(), phylloAccountId);
+
+                syncComments(phylloAccountId, creator, phylloIdToPost);
+                computeDataFreshness(creator);
+                updateSyncStatus(creatorId, "COMPLETED", null);
+
+                transactionTemplate.executeWithoutResult(status -> {
+                    Creator c = creatorRepository.findById(creatorId).orElse(null);
+                    if (c != null) {
+                        c.setLastSyncedAt(LocalDateTime.now());
+                        creatorRepository.save(c);
+                    }
+                });
+
+                analyticsProcessingService.processCreatorAnalytics(creator);
+                sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
+            } else {
+                log.warn("Retry sync still found 0 posts for account: {} — giving up", phylloAccountId);
+                updateSyncStatus(creatorId, "COMPLETED", null); // Mark as done anyway
+            }
+        } catch (Exception e) {
+            log.error("Retry sync failed for account: {}", phylloAccountId, e);
+        }
+    }
+
+    /**
+     * Updates sync status in its own transaction — immediately visible to frontend.
+     */
+    private void updateSyncStatus(Long creatorId, String status, String error) {
+        transactionTemplate.executeWithoutResult(txStatus -> {
+            Creator c = creatorRepository.findById(creatorId).orElse(null);
+            if (c != null) {
+                c.setSyncStatus(status);
+                if ("SYNCING".equals(status)) {
+                    c.setSyncStartedAt(LocalDateTime.now());
+                    c.setSyncError(null);
+                } else if ("COMPLETED".equals(status)) {
+                    c.setSyncCompletedAt(LocalDateTime.now());
+                    c.setSyncError(null);
+                } else if ("FAILED".equals(status)) {
+                    c.setSyncCompletedAt(LocalDateTime.now());
+                    c.setSyncError(error);
+                }
+                creatorRepository.save(c);
+            }
+        });
+        log.info("  → Sync status updated to: {} for creator: {}", status, creatorId);
+    }
+
+    /**
+     * Schedule a retry in 30 minutes (using a simple async delay).
+     */
+    private void scheduleRetrySync(String phylloAccountId, Long creatorId) {
+        log.info("  → Scheduling retry sync in 30 minutes for account: {}", phylloAccountId);
+        // Run in a new async thread with delay
+        new Thread(() -> {
+            try {
+                Thread.sleep(RETRY_DELAY_MS);
+                retrySyncPosts(phylloAccountId, creatorId);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    /**
+     * Send email notification when sync completes.
+     */
+    private void sendSyncCompleteEmail(Long creatorId, int postsCount) {
+        try {
+            // Find the user email via social account link
+            socialAccountRepository.findAll().stream()
+                .filter(a -> a.getCreator() != null && a.getCreator().getId().equals(creatorId))
+                .findFirst()
+                .ifPresent(account -> {
+                    // Look up user email from the user table via userId
+                    // For now, we'll use a simple approach — the creator's email or username
+                    Creator creator = account.getCreator();
+                    String platform = account.getPlatform() != null ? account.getPlatform() : "social media";
+                    String username = account.getPlatformUsername() != null ? account.getPlatformUsername() : "your account";
+
+                    // Find user email — check if creator has an email (set during profile sync sometimes)
+                    // If not available, skip email notification
+                    if (creator.getEmail() != null && !creator.getEmail().isEmpty()) {
+                        emailService.sendSyncCompleteEmail(creator.getEmail(), username, platform, postsCount);
+                    } else {
+                        log.info("  → No email available for creator {} — skipping notification", creatorId);
+                    }
+                });
+        } catch (Exception e) {
+            log.warn("  → Failed to send sync completion email: {}", e.getMessage());
         }
     }
 
@@ -140,40 +269,45 @@ public class PhylloSyncService {
      * STALE = no posts at all
      */
     private void computeDataFreshness(Creator creator) {
-        List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creator.getId());
+        transactionTemplate.executeWithoutResult(status -> {
+            List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creator.getId());
 
-        if (posts.isEmpty()) {
-            creator.setDataFreshness("STALE");
-            creator.setLatestPostDate(null);
-            creator.setOldestPostDate(null);
-            log.info("  → Data freshness: STALE (no posts)");
-            return;
-        }
+            Creator c = creatorRepository.findById(creator.getId()).orElse(null);
+            if (c == null) return;
 
-        // Find latest and oldest post dates
-        LocalDateTime latestDate = posts.stream()
-            .map(Post::getPostedAt)
-            .filter(Objects::nonNull)
-            .max(LocalDateTime::compareTo)
-            .orElse(null);
+            if (posts.isEmpty()) {
+                c.setDataFreshness("STALE");
+                c.setLatestPostDate(null);
+                c.setOldestPostDate(null);
+                creatorRepository.save(c);
+                log.info("  → Data freshness: STALE (no posts)");
+                return;
+            }
 
-        LocalDateTime oldestDate = posts.stream()
-            .map(Post::getPostedAt)
-            .filter(Objects::nonNull)
-            .min(LocalDateTime::compareTo)
-            .orElse(null);
+            LocalDateTime latestDate = posts.stream()
+                .map(Post::getPostedAt)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
 
-        creator.setLatestPostDate(latestDate);
-        creator.setOldestPostDate(oldestDate);
+            LocalDateTime oldestDate = posts.stream()
+                .map(Post::getPostedAt)
+                .filter(Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
 
-        // Classify freshness
-        if (latestDate != null && latestDate.isAfter(LocalDateTime.now().minusDays(90))) {
-            creator.setDataFreshness("RECENT");
-            log.info("  → Data freshness: RECENT (latest post: {})", latestDate);
-        } else {
-            creator.setDataFreshness("HISTORIC");
-            log.info("  → Data freshness: HISTORIC (latest post: {})", latestDate);
-        }
+            c.setLatestPostDate(latestDate);
+            c.setOldestPostDate(oldestDate);
+
+            if (latestDate != null && latestDate.isAfter(LocalDateTime.now().minusDays(90))) {
+                c.setDataFreshness("RECENT");
+                log.info("  → Data freshness: RECENT (latest post: {})", latestDate);
+            } else {
+                c.setDataFreshness("HISTORIC");
+                log.info("  → Data freshness: HISTORIC (latest post: {})", latestDate);
+            }
+            creatorRepository.save(c);
+        });
     }
 
     private void syncProfile(String accountId, Creator creator) {
