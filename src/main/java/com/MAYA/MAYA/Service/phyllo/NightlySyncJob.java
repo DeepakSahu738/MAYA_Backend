@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -49,11 +49,12 @@ public class NightlySyncJob {
     private final PhylloService phylloService;
     private final CreatorAccessService creatorAccessService;
     private final AnalyticsProcessingService analyticsProcessingService;
+    private final TransactionTemplate transactionTemplate;
 
     private static final int COMMENT_FETCH_LIMIT = 15;
     private static final long RATE_LIMIT_DELAY_MS = 200;
 
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Kolkata")
     public void runNightlySync() {
         log.info("=== NIGHTLY SYNC STARTED ===");
         long startTime = System.currentTimeMillis();
@@ -83,63 +84,68 @@ public class NightlySyncJob {
         log.info("=== NIGHTLY SYNC COMPLETED === {} success, {} failed, {}s", successCount, failCount, duration);
     }
 
-    @Transactional
     public void syncSingleAccount(UserSocialAccount account) throws Exception {
-        String phylloAccountId = account.getPhylloAccountId();
-        Creator creator = account.getCreator();
-        Long creatorId = creator.getId();
-        log.info("Syncing @{} (creator: {})", account.getPlatformUsername(), creatorId);
+        transactionTemplate.executeWithoutResult(status -> {
+            try {
+                String phylloAccountId = account.getPhylloAccountId();
+                Creator creator = creatorRepository.findById(account.getCreator().getId()).orElseThrow();
+                Long creatorId = creator.getId();
+                log.info("Syncing @{} (creator: {})", account.getPlatformUsername(), creatorId);
 
-        // 1. Sync profile
-        syncProfile(phylloAccountId, creator);
-        rateLimitDelay();
+                // 1. Sync profile
+                syncProfile(phylloAccountId, creator);
+                rateLimitDelay();
 
-        // 2. DELETE old posts + comments → batch INSERT fresh
-        // Delete comments first (FK constraint)
-        commentRepository.deleteByCreatorId(creatorId);
-        postRepository.deleteByCreatorId(creatorId);
-        log.info("  → Cleared old posts + comments for creator {}", creatorId);
+                // 2. DELETE old posts + comments → batch INSERT fresh
+                commentRepository.deleteByCreatorId(creatorId);
+                postRepository.deleteByCreatorId(creatorId);
+                log.info("  → Cleared old posts + comments for creator {}", creatorId);
 
-        // Fetch fresh posts from Phyllo
-        List<Post> freshPosts = fetchAndBuildPosts(phylloAccountId, creator);
-        if (!freshPosts.isEmpty()) {
-            postRepository.saveAll(freshPosts);
-            log.info("  → Inserted {} fresh posts", freshPosts.size());
-        }
-        rateLimitDelay();
+                // Fetch fresh posts from Phyllo
+                List<Post> freshPosts = fetchAndBuildPosts(phylloAccountId, creator);
+                if (!freshPosts.isEmpty()) {
+                    postRepository.saveAll(freshPosts);
+                    log.info("  → Inserted {} fresh posts", freshPosts.size());
+                }
+                rateLimitDelay();
 
-        // 3. Fetch comments for last 15 posts
-        List<Post> recentPosts = freshPosts.stream()
-            .sorted(Comparator.comparing(Post::getPostedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-            .limit(COMMENT_FETCH_LIMIT)
-            .collect(Collectors.toList());
+                // 3. Fetch comments for last 15 posts
+                List<Post> recentPosts = freshPosts.stream()
+                    .sorted(Comparator.comparing(Post::getPostedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(COMMENT_FETCH_LIMIT)
+                    .collect(Collectors.toList());
 
-        List<Comment> allComments = new ArrayList<>();
-        for (Post post : recentPosts) {
-            rateLimitDelay();
-            List<Comment> postComments = fetchCommentsForPost(phylloAccountId, post, creatorId);
-            allComments.addAll(postComments);
-        }
-        if (!allComments.isEmpty()) {
-            commentRepository.saveAll(allComments);
-            log.info("  → Inserted {} fresh comments (from {} posts)", allComments.size(), recentPosts.size());
-        }
+                List<Comment> allComments = new ArrayList<>();
+                for (Post post : recentPosts) {
+                    rateLimitDelay();
+                    List<Comment> postComments = fetchCommentsForPost(phylloAccountId, post, creatorId);
+                    allComments.addAll(postComments);
+                }
+                if (!allComments.isEmpty()) {
+                    commentRepository.saveAll(allComments);
+                    log.info("  → Inserted {} fresh comments (from {} posts)", allComments.size(), recentPosts.size());
+                }
 
-        // 4. DELETE + recompute hashtag_performance
-        hashtagPerformanceRepository.deleteByCreatorId(creatorId);
-        // 5. DELETE + recompute top_commenters
-        topCommenterRepository.deleteByCreatorId(creatorId);
+                // 4. DELETE + recompute hashtag_performance
+                hashtagPerformanceRepository.deleteByCreatorId(creatorId);
+                // 5. DELETE + recompute top_commenters
+                topCommenterRepository.deleteByCreatorId(creatorId);
 
-        // 6. Update timestamps
-        creator.setLastSyncedAt(LocalDateTime.now());
-        creatorRepository.save(creator);
-        account.setLastSyncedAt(LocalDateTime.now());
-        socialAccountRepository.save(account);
+                // 6. Update timestamps
+                creator.setLastSyncedAt(LocalDateTime.now());
+                creatorRepository.save(creator);
+                account.setLastSyncedAt(LocalDateTime.now());
+                socialAccountRepository.save(account);
 
-        // 7. Recompute analytics (hashtags + commenters + weekly report)
-        analyticsProcessingService.processCreatorAnalytics(creator);
+                // 7. Recompute analytics (hashtags + commenters + weekly report)
+                analyticsProcessingService.processCreatorAnalytics(creator);
 
-        log.info("  ✓ Sync complete for @{}", account.getPlatformUsername());
+                log.info("  ✓ Sync complete for @{}", account.getPlatformUsername());
+            } catch (Exception e) {
+                status.setRollbackOnly();
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        });
     }
 
     // === SYNC PROFILE ===
@@ -175,17 +181,41 @@ public class NightlySyncJob {
         }
     }
 
-    // === FETCH + BUILD POSTS ===
+    // === FETCH + BUILD POSTS (WITH PAGINATION) ===
     private List<Post> fetchAndBuildPosts(String accountId, Creator creator) {
         List<Post> posts = new ArrayList<>();
         try {
-            JsonNode contentData = phylloService.fetchContents(accountId, 100);
-            JsonNode postsArray = contentData.get("data");
-            if (postsArray == null || !postsArray.isArray()) return posts;
+            int limit = 100;
+            int offset = 0;
+            boolean hasMore = true;
 
-            for (JsonNode postNode : postsArray) {
-                posts.add(buildPost(postNode, creator));
+            while (hasMore) {
+                JsonNode contentData = phylloService.fetchContents(accountId, limit, offset);
+                JsonNode postsArray = contentData.get("data");
+                if (postsArray == null || !postsArray.isArray() || postsArray.size() == 0) break;
+
+                for (JsonNode postNode : postsArray) {
+                    posts.add(buildPost(postNode, creator));
+                }
+
+                // Check pagination
+                JsonNode metadata = contentData.get("metadata");
+                if (metadata != null && metadata.has("total")) {
+                    int total = metadata.get("total").asInt();
+                    if (posts.size() >= total) {
+                        hasMore = false;
+                    }
+                } else {
+                    if (postsArray.size() < limit) {
+                        hasMore = false;
+                    }
+                }
+
+                offset += postsArray.size();
+                rateLimitDelay();
             }
+
+            log.info("  → Fetched {} total posts (paginated)", posts.size());
         } catch (Exception e) {
             log.warn("  → Posts fetch failed: {}", e.getMessage());
         }

@@ -135,6 +135,31 @@ public class ScheduleController {
         return ResponseEntity.ok(Map.of("message", "Post approved", "id", id));
     }
 
+    /**
+     * Mark an approved post as published (manual publish confirmation by user).
+     */
+    @PutMapping("/publish/{id}")
+    public ResponseEntity<?> publishPost(@PathVariable Long id) {
+        ScheduledPost post = scheduledPostRepository.findById(id).orElse(null);
+        if (post == null) return ResponseEntity.notFound().build();
+
+        if (post.getApprovalStatus() != ScheduledPost.ApprovalStatus.APPROVED) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Only approved posts can be marked as published",
+                "currentStatus", post.getApprovalStatus().name()
+            ));
+        }
+
+        post.setApprovalStatus(ScheduledPost.ApprovalStatus.PUBLISHED);
+        post.setPublishedAt(LocalDateTime.now());
+        post.setUpdatedAt(LocalDateTime.now());
+        scheduledPostRepository.save(post);
+
+        log.info("Post {} marked as published for creator {}", id, post.getCreator().getId());
+
+        return ResponseEntity.ok(Map.of("message", "Post marked as published", "id", id, "publishedAt", post.getPublishedAt().toString()));
+    }
+
     // --- Request DTOs ---
 
     record CreateScheduledPostRequest(
