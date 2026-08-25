@@ -59,13 +59,16 @@ public class NightlySyncJob {
         log.info("=== NIGHTLY SYNC STARTED ===");
         long startTime = System.currentTimeMillis();
 
-        List<UserSocialAccount> allConnected = socialAccountRepository.findAll().stream()
-            .filter(a -> "CONNECTED".equals(a.getStatus()))
-            .filter(a -> a.getCreator() != null)
-            .filter(a -> !creatorAccessService.isDemoCreator(a.getCreator().getId()))
-            .collect(Collectors.toList());
+        // Load accounts within a transaction to avoid lazy-loading issues
+        List<UserSocialAccount> allConnected = transactionTemplate.execute(status -> {
+            return socialAccountRepository.findAll().stream()
+                .filter(a -> "CONNECTED".equals(a.getStatus()))
+                .filter(a -> a.getCreator() != null)
+                .filter(a -> !creatorAccessService.isDemoCreator(a.getCreator().getId()))
+                .collect(Collectors.toList());
+        });
 
-        log.info("Found {} connected accounts to sync", allConnected.size());
+        log.info("Found {} connected accounts to sync", allConnected != null ? allConnected.size() : 0);
 
         int successCount = 0;
         int failCount = 0;
