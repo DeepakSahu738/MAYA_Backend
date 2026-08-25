@@ -54,6 +54,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/auth/**").authenticated()
                         .requestMatchers("/api/content/**").authenticated()
                         .requestMatchers("/api/analytics/**").permitAll()
+                        .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/chat/**").permitAll()
                         .requestMatchers("/api/phyllo/**").authenticated()
                         .requestMatchers("/api/goals/**").authenticated()
