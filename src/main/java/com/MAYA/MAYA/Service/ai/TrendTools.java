@@ -71,10 +71,10 @@ public class TrendTools {
 
         // Find posts with highest share rate (viral signal)
         List<Post> viral = posts.stream()
-            .filter(p -> p.getMetrics().getShares() != null && p.getMetrics().getReach() != null && p.getMetrics().getReach() > 0)
+            .filter(p -> p.getMetrics().getShareCount() != null && p.getMetrics().getReachOrganicCount() != null && p.getMetrics().getReachOrganicCount() > 0)
             .sorted((a, b) -> {
-                double rateA = a.getMetrics().getShares() * 100.0 / a.getMetrics().getReach();
-                double rateB = b.getMetrics().getShares() * 100.0 / b.getMetrics().getReach();
+                double rateA = a.getMetrics().getShareCount() * 100.0 / a.getMetrics().getReachOrganicCount();
+                double rateB = b.getMetrics().getShareCount() * 100.0 / b.getMetrics().getReachOrganicCount();
                 return Double.compare(rateB, rateA);
             })
             .limit(5)
@@ -83,14 +83,14 @@ public class TrendTools {
         if (viral.isEmpty()) return "Not enough share data to detect viral patterns.";
 
         // Analyze patterns
-        long videoCount = viral.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType())).count();
+        long videoCount = viral.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat())).count();
         double avgCaptionLen = viral.stream().mapToInt(p -> p.getCaptionLength() != null ? p.getCaptionLength() : 0).average().orElse(0);
 
         StringBuilder sb = new StringBuilder("Viral content patterns (your most shared posts):\n\n");
         for (Post p : viral) {
-            double shareRate = p.getMetrics().getShares() * 100.0 / p.getMetrics().getReach();
+            double shareRate = p.getMetrics().getShareCount() * 100.0 / p.getMetrics().getReachOrganicCount();
             sb.append(String.format("- \"%s\" (%s, share rate: %.1f%%)\n",
-                truncate(p.getCaption(), 50), p.getMediaType(), shareRate));
+                truncate(p.getCaption(), 50), p.getFormat(), shareRate));
         }
         sb.append(String.format("\nPatterns:\n- Format: %d/%d viral posts are VIDEO\n- Avg caption length: %.0f chars\n",
             videoCount, viral.size(), avgCaptionLen));

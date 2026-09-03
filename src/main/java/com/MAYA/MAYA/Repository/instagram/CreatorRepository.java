@@ -7,6 +7,6 @@ import java.util.Optional;
 
 @Repository
 public interface CreatorRepository extends JpaRepository<Creator, Long> {
-    Optional<Creator> findByInstagramId(String instagramId);
+    Optional<Creator> findByPhylloAccountId(String phylloAccountId);
     Optional<Creator> findByUsername(String username);
 }

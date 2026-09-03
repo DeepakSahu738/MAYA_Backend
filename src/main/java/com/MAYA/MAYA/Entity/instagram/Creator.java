@@ -17,8 +17,13 @@ public class Creator {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "instagram_id", nullable = false, unique = true)
-    private String instagramId;
+    // Phyllo's account ID for this connected social account
+    @Column(name = "phyllo_account_id", nullable = false, unique = true)
+    private String phylloAccountId;
+    
+    // Platform this creator account belongs to: INSTAGRAM, YOUTUBE, TIKTOK, etc.
+    @Column(name = "platform")
+    private String platform;
     
     @Column(nullable = false)
     private String username;

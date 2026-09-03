@@ -84,18 +84,18 @@ public class WeeklyStrategyService {
         signals.followerCount = creator.getFollowerCount();
 
         // --- Content formats distribution ---
-        long imageCount = posts.stream().filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType())).count();
-        long videoCount = posts.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType())).count();
+        long imageCount = posts.stream().filter(p -> "IMAGE".equalsIgnoreCase(p.getFormat())).count();
+        long videoCount = posts.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat())).count();
         signals.imagePct = posts.isEmpty() ? 0 : (int)(imageCount * 100 / posts.size());
         signals.videoPct = posts.isEmpty() ? 0 : (int)(videoCount * 100 / posts.size());
 
         // --- Best performing format ---
         OptionalDouble imageEr = posts.stream()
-            .filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "IMAGE".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics).filter(m -> m.getEngagementRate() != null)
             .mapToDouble(PostMetrics::getEngagementRate).average();
         OptionalDouble videoEr = posts.stream()
-            .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics).filter(m -> m.getEngagementRate() != null)
             .mapToDouble(PostMetrics::getEngagementRate).average();
         signals.bestFormat = (videoEr.orElse(0) > imageEr.orElse(0)) ? "VIDEO/REELS" : "IMAGE";
@@ -118,8 +118,8 @@ public class WeeklyStrategyService {
 
         // --- Viral patterns (top 3 by share rate) ---
         signals.viralCaptions = posts.stream()
-            .filter(p -> p.getMetrics().getShares() != null && p.getMetrics().getReach() != null && p.getMetrics().getReach() > 0)
-            .sorted(Comparator.comparingDouble(p -> -(p.getMetrics().getShares() * 100.0 / p.getMetrics().getReach())))
+            .filter(p -> p.getMetrics().getShareCount() != null && p.getMetrics().getReachOrganicCount() != null && p.getMetrics().getReachOrganicCount() > 0)
+            .sorted(Comparator.comparingDouble(p -> -(p.getMetrics().getShareCount() * 100.0 / p.getMetrics().getReachOrganicCount())))
             .limit(3)
             .map(p -> p.getCaption() != null ? truncate(p.getCaption(), 100) : "")
             .filter(c -> !c.isBlank())

@@ -6,6 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
+/**
+ * A single piece of content synced from Phyllo (post, video, reel, tweet, etc.).
+ *
+ * Field names mirror Phyllo's content schema so the sync layer, DB, and
+ * analytics all share one vocabulary. Platform-specific fields that a given
+ * platform does not report are left null. "caption" is the one deliberate
+ * exception — Phyllo calls it "description", but Maya reasons about captions
+ * across scheduling, strategy, and AI, so we keep the Maya-domain name.
+ */
 @Entity
 @Table(name = "posts")
 @Data
@@ -18,24 +27,44 @@ public class Post {
     @SequenceGenerator(name = "post_seq", sequenceName = "posts_id_seq", allocationSize = 50)
     private Long id;
     
-    @Column(name = "instagram_id", nullable = false, unique = true)
-    private String instagramId;
+    // Phyllo's content UUID (unique per content item)
+    @Column(name = "phyllo_id", nullable = false, unique = true)
+    private String phylloId;
+    
+    // Platform-native content ID (e.g. YouTube video ID, tweet ID)
+    @Column(name = "external_id")
+    private String externalId;
+    
+    // Platform this content belongs to: INSTAGRAM, YOUTUBE, TIKTOK, etc.
+    @Column(name = "platform")
+    private String platform;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
     private Creator creator;
     
+    // Phyllo's "title" for the content
+    @Column(name = "title", columnDefinition = "TEXT")
+    private String title;
+    
+    // Phyllo's "description" — kept as "caption" (Maya-domain concept)
     @Column(name = "caption", columnDefinition = "TEXT")
     private String caption;
     
-    @Column(name = "media_type", nullable = false)
-    private String mediaType;
+    // Phyllo's "format": VIDEO | IMAGE | AUDIO | TEXT | OTHER
+    @Column(name = "format")
+    private String format;
+    
+    // Phyllo's "type": platform-specific (REELS, STORY, TWEET, VIDEO, POST, etc.)
+    @Column(name = "type")
+    private String type;
+    
+    // Phyllo's "url" — the permanent content URL
+    @Column(name = "url", columnDefinition = "TEXT")
+    private String url;
     
     @Column(name = "media_url", columnDefinition = "TEXT")
     private String mediaUrl;
-    
-    @Column(name = "permalink", columnDefinition = "TEXT")
-    private String permalink;
     
     @Column(name = "shortcode")
     private String shortcode;
@@ -43,17 +72,40 @@ public class Post {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
     
+    @Column(name = "persistent_thumbnail_url", columnDefinition = "TEXT")
+    private String persistentThumbnailUrl;
+    
+    // Video duration in seconds (nullable — video content only)
+    @Column(name = "duration")
+    private Integer duration;
+    
     @Column(name = "hashtags", columnDefinition = "TEXT")
     private String hashtags;
+    
+    // Mentioned accounts (JSON array stored as text)
+    @Column(name = "mentions", columnDefinition = "TEXT")
+    private String mentions;
+    
+    // Visibility: PUBLIC | PRIVATE | UNLISTED
+    @Column(name = "visibility")
+    private String visibility;
+    
+    @Column(name = "platform_profile_id")
+    private String platformProfileId;
+    
+    @Column(name = "platform_profile_name")
+    private String platformProfileName;
+    
+    @Column(name = "is_owned_by_platform_user")
+    private Boolean isOwnedByPlatformUser;
     
     @Column(name = "is_comment_enabled")
     private Boolean isCommentEnabled = true;
     
-    @Column(name = "media_product_type")
-    private String mediaProductType;
-    
     @Column(name = "is_shared_to_feed")
     private Boolean isSharedToFeed = false;
+    
+    // --- Maya-computed content fields ---
     
     @Column(name = "caption_length")
     private Integer captionLength = 0;
@@ -69,10 +121,6 @@ public class Post {
     
     @Column(name = "hashtag_count")
     private Integer hashtagCount = 0;
-    
-    // Nullable — VIDEO only, null for IMAGE posts
-    @Column(name = "view_count")
-    private Long viewCount;
     
     @Column(name = "play_through_rate")
     private Double playThroughRate;

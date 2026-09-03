@@ -30,7 +30,7 @@ public class SnapshotAnalyticsService {
         List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId);
         
         return posts.stream()
-            .filter(p -> p.getMetrics().getReach() != null && p.getMetrics().getReach() > 0)
+            .filter(p -> p.getMetrics().getReachOrganicCount() != null && p.getMetrics().getReachOrganicCount() > 0)
             .sorted((a, b) -> Double.compare(
                 computeEngagementRate(b.getMetrics()),
                 computeEngagementRate(a.getMetrics())))
@@ -44,7 +44,7 @@ public class SnapshotAnalyticsService {
         List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId);
         
         return posts.stream()
-            .filter(p -> p.getMetrics().getReach() != null && p.getMetrics().getReach() > 0)
+            .filter(p -> p.getMetrics().getReachOrganicCount() != null && p.getMetrics().getReachOrganicCount() > 0)
             .sorted(Comparator.comparingDouble(p -> computeEngagementRate(p.getMetrics())))
             .limit(limit != null ? limit : 5)
             .map(this::toPostPerformanceDTO)
@@ -63,7 +63,7 @@ public class SnapshotAnalyticsService {
             List<String> tags = parseHashtags(post.getHashtags());
             for (String tag : tags) {
                 usageCount.merge(tag, 1, Integer::sum);
-                totalLikes.merge(tag, post.getMetrics().getLikes(), Integer::sum);
+                totalLikes.merge(tag, post.getMetrics().getLikeCount(), Integer::sum);
             }
         }
         
@@ -101,18 +101,18 @@ public class SnapshotAnalyticsService {
             
             OptionalDouble avgReach = tagPosts.stream()
                 .map(Post::getMetrics)
-                .filter(m -> m.getReach() != null)
-                .mapToDouble(PostMetrics::getReach)
+                .filter(m -> m.getReachOrganicCount() != null)
+                .mapToDouble(PostMetrics::getReachOrganicCount)
                 .average();
             
             OptionalDouble avgEr = tagPosts.stream()
                 .map(Post::getMetrics)
-                .filter(m -> m.getReach() != null && m.getReach() > 0)
+                .filter(m -> m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
                 .mapToDouble(this::computeEngagementRate)
                 .average();
             
             int totalLikes = tagPosts.stream()
-                .mapToInt(p -> p.getMetrics().getLikes() != null ? p.getMetrics().getLikes() : 0)
+                .mapToInt(p -> p.getMetrics().getLikeCount() != null ? p.getMetrics().getLikeCount() : 0)
                 .sum();
             
             results.add(new HashtagPerformanceDTO(
@@ -284,22 +284,22 @@ public class SnapshotAnalyticsService {
     // ======================================================================
     
     private double computeEngagementRate(PostMetrics m) {
-        if (m.getReach() == null || m.getReach() == 0) return 0.0;
-        int likes = m.getLikes() != null ? m.getLikes() : 0;
-        int comments = m.getComments() != null ? m.getComments() : 0;
-        int saves = m.getSaves() != null ? m.getSaves() : 0;
-        int shares = m.getShares() != null ? m.getShares() : 0;
+        if (m.getReachOrganicCount() == null || m.getReachOrganicCount() == 0) return 0.0;
+        int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+        int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+        int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+        int shares = m.getShareCount() != null ? m.getShareCount() : 0;
         int totalEngagement = likes + comments + saves + shares;
         // If reach < total engagement, data is unreliable — return 0
-        if (m.getReach() < totalEngagement) return 0.0;
-        double er = totalEngagement * 100.0 / m.getReach();
+        if (m.getReachOrganicCount() < totalEngagement) return 0.0;
+        double er = totalEngagement * 100.0 / m.getReachOrganicCount();
         return Math.min(er, 100.0); // cap at 100%
     }
     
     private double avgEngagementForPosts(List<Post> posts) {
         return posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m != null && m.getReach() != null && m.getReach() > 0)
+            .filter(m -> m != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
             .mapToDouble(this::computeEngagementRate)
             .filter(er -> er <= 100.0) // exclude unreliable data
             .average()
@@ -310,13 +310,13 @@ public class SnapshotAnalyticsService {
         PostMetrics m = post.getMetrics();
         return new PostPerformanceDTO(
             post.getId(),
-            post.getInstagramId(),
+            post.getPhylloId(),
             post.getCaption(),
-            post.getMediaType(),
+            post.getFormat(),
             round(computeEngagementRate(m)),
-            m.getLikes(),
-            m.getComments(),
-            m.getSaves(),
+            m.getLikeCount(),
+            m.getCommentCount(),
+            m.getSaveCount(),
             post.getPostedAt()
         );
     }

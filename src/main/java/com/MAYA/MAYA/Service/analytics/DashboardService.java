@@ -3,6 +3,7 @@ package com.MAYA.MAYA.Service.analytics;
 import com.MAYA.MAYA.DTO.analytics.*;
 import com.MAYA.MAYA.DTO.analytics.DashboardResponseDTO.*;
 import com.MAYA.MAYA.Entity.instagram.*;
+import com.MAYA.MAYA.Enums.Platform;
 import com.MAYA.MAYA.Controller.exception.CreatorNotFoundException;
 import com.MAYA.MAYA.Repository.instagram.*;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,8 @@ public class DashboardService {
         Creator creator = creatorRepository.findById(creatorId)
             .orElseThrow(() -> new CreatorNotFoundException(creatorId));
 
+        Platform platform = Platform.normalize(creator.getPlatform());
+
         List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId);
         List<Comment> comments = commentRepository.findByCreatorIdOrderByCommentedAtDesc(creatorId);
 
@@ -44,14 +47,20 @@ public class DashboardService {
                 .creatorId(creatorId)
                 .username(creator.getUsername())
                 .niche(creator.getNiche())
+                .platform(platform.name())
                 .generatedAt(LocalDateTime.now())
                 .build();
         }
+
+        // Platforms that expose comment bodies via the integration.
+        // Facebook does NOT, so sentiment / questions / commenters are skipped there.
+        boolean hasComments = platform != Platform.FACEBOOK;
 
         return DashboardResponseDTO.builder()
             .creatorId(creatorId)
             .username(creator.getUsername())
             .niche(creator.getNiche())
+            .platform(platform.name())
             .generatedAt(LocalDateTime.now())
             .healthScore(accountHealthService.calculateAccountHealthScore(creatorId))
             .rateCards(buildRateCards(creatorId))
@@ -63,16 +72,125 @@ public class DashboardService {
             .bestPostingTime(buildBestPostingTime(posts))
             .mostUsedHashtags(snapshotAnalyticsService.getMostUsedHashtags(creatorId, 10))
             .topPerformingHashtags(snapshotAnalyticsService.getTopPerformingHashtags(creatorId, 10))
-            .topCommenters(buildTopCommenters(creatorId))
-            .sentimentBreakdown(analyticsService.getSentimentBreakdown(creatorId))
-            .commonWords(snapshotAnalyticsService.getCommonCommentWords(creatorId, 20))
-            .questionsVsStatements(buildQuestionsVsStatements(posts, comments))
-            .questionsInsight(buildQuestionsInsight(creatorId, comments))
-            .mostLikedComments(buildMostLikedComments(posts, comments))
+            .topCommenters(hasComments ? buildTopCommenters(creatorId) : null)
+            .sentimentBreakdown(hasComments ? analyticsService.getSentimentBreakdown(creatorId) : null)
+            .commonWords(hasComments ? snapshotAnalyticsService.getCommonCommentWords(creatorId, 20) : null)
+            .questionsVsStatements(hasComments ? buildQuestionsVsStatements(posts, comments) : null)
+            .questionsInsight(hasComments ? buildQuestionsInsight(creatorId, comments) : null)
+            .mostLikedComments(hasComments ? buildMostLikedComments(posts, comments) : null)
             .ctaInsight(buildCtaInsight(posts))
             .captionLengthInsight(buildCaptionLengthInsight(posts))
             .profileConversion(analyticsService.calculateProfileToFollowConversion(creatorId))
+            .platformInsights(buildPlatformInsights(creatorId, platform))
+            .unavailableMetrics(buildUnavailableMetrics(platform))
             .build();
+    }
+
+    // --- Platform-specific hero cards ---
+    private List<PlatformInsightCardDTO> buildPlatformInsights(Long creatorId, Platform platform) {
+        List<PlatformInsightCardDTO> cards = new ArrayList<>();
+        switch (platform) {
+            case YOUTUBE -> {
+                addCard(cards, "yt_view_engagement", "View Engagement Rate",
+                    analyticsService.calculateViewEngagementRate(creatorId), "%",
+                    "Likes + comments as a share of views");
+                addCard(cards, "yt_like_to_view", "Like-to-View Ratio",
+                    analyticsService.calculateLikeToViewRatio(creatorId), "%",
+                    "Likes as a share of total views");
+                addCard(cards, "yt_approval_rate", "Approval Rate",
+                    analyticsService.calculateApprovalRate(creatorId), "%",
+                    "Likes vs likes + dislikes");
+                addCard(cards, "yt_views_per_sub", "Views per Subscriber",
+                    analyticsService.calculateViewsPerSubscriber(creatorId), "views/sub",
+                    "Average views relative to your subscriber base");
+            }
+            case FACEBOOK -> {
+                addCard(cards, "fb_reach_efficiency", "Reach Efficiency",
+                    analyticsService.calculateFbReachEfficiency(creatorId), "%",
+                    "Unique reach as a share of total impressions");
+                addCard(cards, "fb_watch_time", "Watch Time",
+                    analyticsService.calculateWatchTimeHours(creatorId), "hours",
+                    "Total time your audience spent watching");
+                addCard(cards, "fb_view_rate", "View Rate",
+                    analyticsService.calculateViewRate(creatorId), "%",
+                    "Views as a share of people reached");
+                addCard(cards, "fb_click_signal", "Clicks",
+                    analyticsService.calculateClickSignal(creatorId), "count",
+                    "Total clicks across recent posts");
+            }
+            case INSTAGRAM, OTHER -> {
+                // Instagram's hero metrics already live in the core rateCards
+                // (save rate, share rate, reach efficiency, play-through), so no
+                // extra platform-specific cards are needed. OTHER uses the same.
+            }
+        }
+        return cards;
+    }
+
+    private void addCard(List<PlatformInsightCardDTO> cards, String key, String label,
+                         Double value, String unit, String description) {
+        cards.add(PlatformInsightCardDTO.builder()
+            .key(key).label(label).value(value).unit(unit).delta(null).description(description)
+            .build());
+    }
+
+    // --- Metrics unavailable per platform (drives UI hide + AI awareness) ---
+    private List<UnavailableMetricDTO> buildUnavailableMetrics(Platform platform) {
+        List<UnavailableMetricDTO> list = new ArrayList<>();
+        switch (platform) {
+            case YOUTUBE -> {
+                list.add(unavailable("reach_efficiency", "Reach Efficiency",
+                    "YouTube doesn't expose reach or impressions, so reach-based metrics aren't available."));
+                list.add(unavailable("save_rate", "Save Rate",
+                    "YouTube doesn't report saves."));
+                list.add(unavailable("share_rate", "Share Rate",
+                    "YouTube doesn't report shares through the current integration."));
+            }
+            case FACEBOOK -> {
+                list.add(unavailable("sentiment_breakdown", "Comment Sentiment",
+                    "Facebook comment content isn't available through the current integration, so sentiment can't be analyzed."));
+                list.add(unavailable("questions_insight", "Questions in Comments",
+                    "Facebook comment content isn't available, so questions can't be detected."));
+                list.add(unavailable("top_commenters", "Top Commenters",
+                    "Facebook comment content isn't available, so top commenters can't be identified."));
+                list.add(unavailable("save_rate", "Save Rate",
+                    "Facebook doesn't report saves."));
+                list.add(unavailable("share_rate", "Share Rate",
+                    "Facebook doesn't report shares through the current integration."));
+            }
+            case INSTAGRAM, OTHER -> {
+                // Instagram supports the full metric set.
+            }
+        }
+        return list;
+    }
+
+    private UnavailableMetricDTO unavailable(String key, String label, String reason) {
+        return UnavailableMetricDTO.builder().key(key).label(label).reason(reason).build();
+    }
+
+    /**
+     * Builds a short platform-awareness block for the AI system message so the
+     * assistant knows which metrics it can and cannot provide for this creator's
+     * platform, and explains limitations instead of inventing numbers.
+     */
+    public String buildPlatformAiContext(Long creatorId) {
+        Creator creator = creatorRepository.findById(creatorId).orElse(null);
+        Platform platform = Platform.normalize(creator != null ? creator.getPlatform() : null);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("PLATFORM: This creator is on ").append(platform.name()).append(".\n");
+
+        List<UnavailableMetricDTO> unavailable = buildUnavailableMetrics(platform);
+        if (unavailable.isEmpty()) {
+            sb.append("All standard metrics are available for this platform.");
+        } else {
+            sb.append("UNAVAILABLE metrics for this platform (do NOT fabricate these — explain they aren't available and suggest an alternative):\n");
+            for (UnavailableMetricDTO m : unavailable) {
+                sb.append("- ").append(m.getLabel()).append(": ").append(m.getReason()).append("\n");
+            }
+        }
+        return sb.toString();
     }
 
     // --- Rate Cards ---
@@ -104,10 +222,10 @@ public class DashboardService {
                     && p.getPostedAt().toLocalDate().isBefore(wEnd))
                 .mapToLong(p -> {
                     PostMetrics m = p.getMetrics();
-                    return (m.getLikes() != null ? m.getLikes() : 0)
-                        + (m.getComments() != null ? m.getComments() : 0)
-                        + (m.getSaves() != null ? m.getSaves() : 0)
-                        + (m.getShares() != null ? m.getShares() : 0);
+                    return (m.getLikeCount() != null ? m.getLikeCount() : 0)
+                        + (m.getCommentCount() != null ? m.getCommentCount() : 0)
+                        + (m.getSaveCount() != null ? m.getSaveCount() : 0)
+                        + (m.getShareCount() != null ? m.getShareCount() : 0);
                 })
                 .sum();
 
@@ -133,10 +251,10 @@ public class DashboardService {
                 LocalDate wEnd = wStart.plusDays(7);
                 if (!postDate.isBefore(wStart) && postDate.isBefore(wEnd)) {
                     PostMetrics m = post.getMetrics();
-                    weeklyTotals[w] += (m.getLikes() != null ? m.getLikes() : 0)
-                        + (m.getComments() != null ? m.getComments() : 0)
-                        + (m.getSaves() != null ? m.getSaves() : 0)
-                        + (m.getShares() != null ? m.getShares() : 0);
+                    weeklyTotals[w] += (m.getLikeCount() != null ? m.getLikeCount() : 0)
+                        + (m.getCommentCount() != null ? m.getCommentCount() : 0)
+                        + (m.getSaveCount() != null ? m.getSaveCount() : 0)
+                        + (m.getShareCount() != null ? m.getShareCount() : 0);
                     break;
                 }
             }
@@ -153,20 +271,20 @@ public class DashboardService {
 
     // --- Content Mix ---
     private ContentMixDTO buildContentMix(List<Post> posts) {
-        long imageCount = posts.stream().filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType())).count();
-        long videoCount = posts.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType())).count();
+        long imageCount = posts.stream().filter(p -> "IMAGE".equalsIgnoreCase(p.getFormat())).count();
+        long videoCount = posts.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat())).count();
         long total = imageCount + videoCount;
         if (total == 0) return null;
 
         OptionalDouble imageEr = posts.stream()
-            .filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "IMAGE".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics)
             .filter(m -> m != null && m.getEngagementRate() != null && m.getEngagementRate() <= 100.0)
             .mapToDouble(PostMetrics::getEngagementRate)
             .average();
 
         OptionalDouble videoEr = posts.stream()
-            .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics)
             .filter(m -> m != null && m.getEngagementRate() != null && m.getEngagementRate() <= 100.0)
             .mapToDouble(PostMetrics::getEngagementRate)
@@ -265,10 +383,10 @@ public class DashboardService {
             double qPct = qs * 100.0 / pc.size();
 
             if (qPct >= 50) {
-                questionHeavyLikes += post.getMetrics().getLikes();
+                questionHeavyLikes += post.getMetrics().getLikeCount();
                 questionHeavyCount++;
             } else {
-                statementHeavyLikes += post.getMetrics().getLikes();
+                statementHeavyLikes += post.getMetrics().getLikeCount();
                 statementHeavyCount++;
             }
         }
@@ -350,7 +468,7 @@ public class DashboardService {
                 .likeCount(c.getLikeCount())
                 .postCaption(c.getPost().getCaption() != null && c.getPost().getCaption().length() > 80
                     ? c.getPost().getCaption().substring(0, 80) + "..." : c.getPost().getCaption())
-                .postPermalink(c.getPost().getPermalink())
+                .postPermalink(c.getPost().getUrl())
                 .commentedAt(c.getCommentedAt())
                 .build())
             .collect(Collectors.toList());
@@ -362,11 +480,11 @@ public class DashboardService {
         List<Post> noCtaPosts = posts.stream().filter(p -> !Boolean.TRUE.equals(p.getHasCta())).collect(Collectors.toList());
 
         OptionalDouble ctaAvg = ctaPosts.stream()
-            .mapToDouble(p -> p.getMetrics().getLikes() + p.getMetrics().getComments())
+            .mapToDouble(p -> p.getMetrics().getLikeCount() + p.getMetrics().getCommentCount())
             .average();
 
         OptionalDouble noCtaAvg = noCtaPosts.stream()
-            .mapToDouble(p -> p.getMetrics().getLikes() + p.getMetrics().getComments())
+            .mapToDouble(p -> p.getMetrics().getLikeCount() + p.getMetrics().getCommentCount())
             .average();
 
         // CTA type breakdown
@@ -435,13 +553,13 @@ public class DashboardService {
     private double avgEr(List<Post> posts) {
         return posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getReach() != null && m.getReach() > 0)
+            .filter(m -> m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
             .mapToDouble(m -> {
-                int likes = m.getLikes() != null ? m.getLikes() : 0;
-                int comments = m.getComments() != null ? m.getComments() : 0;
-                int saves = m.getSaves() != null ? m.getSaves() : 0;
-                int shares = m.getShares() != null ? m.getShares() : 0;
-                return (likes + comments + saves + shares) * 100.0 / m.getReach();
+                int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+                int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+                int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+                int shares = m.getShareCount() != null ? m.getShareCount() : 0;
+                return (likes + comments + saves + shares) * 100.0 / m.getReachOrganicCount();
             })
             .average()
             .orElse(0.0);
