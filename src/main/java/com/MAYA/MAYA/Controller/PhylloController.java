@@ -185,7 +185,8 @@ public class PhylloController {
 
         // Create a Creator entity for this connected account
         Creator creator = new Creator();
-        creator.setInstagramId(request.accountId());
+        creator.setPhylloAccountId(request.accountId());
+        creator.setPlatform(platform);
         creator.setUsername(username != null ? username : "unknown");
         creator.setNiche("Not set");
         creator.setConnectedAt(LocalDateTime.now());

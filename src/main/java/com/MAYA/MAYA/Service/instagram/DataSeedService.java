@@ -30,6 +30,9 @@ public class DataSeedService implements CommandLineRunner {
     private final CreatorRepository creatorRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final WeeklyReportRepository weeklyReportRepository;
+    private final HashtagPerformanceRepository hashtagPerformanceRepository;
+    private final TopCommenterRepository topCommenterRepository;
     private final AnalyticsProcessingService analyticsProcessingService;
 
     private static final String DEMO_USERNAME = "fitlife_by_meera";
@@ -59,8 +62,14 @@ public class DataSeedService implements CommandLineRunner {
                 return;
             }
             log.info("Partial demo data ({} posts). Wiping and re-seeding...", postCount);
-            commentRepository.deleteByCreatorId(existing.get().getId());
-            postRepository.deleteByCreatorId(existing.get().getId());
+            Long existingId = existing.get().getId();
+            // Delete creator-scoped derived rows first (FK constraints), then posts/creator.
+            // weekly_reports FK-references posts via top_post_id / worst_post_id.
+            weeklyReportRepository.deleteByCreatorId(existingId);
+            hashtagPerformanceRepository.deleteByCreatorId(existingId);
+            topCommenterRepository.deleteByCreatorId(existingId);
+            commentRepository.deleteByCreatorId(existingId);
+            postRepository.deleteByCreatorId(existingId);
             creatorRepository.delete(existing.get());
         }
 
@@ -83,7 +92,8 @@ public class DataSeedService implements CommandLineRunner {
         JsonNode firstPost = postsArray.get(0);
         Creator creator = new Creator();
         JsonNode account = firstPost.get("account");
-        creator.setInstagramId(account.has("id") ? account.get("id").asText() : DEMO_USERNAME);
+        creator.setPhylloAccountId(account.has("id") ? account.get("id").asText() : DEMO_USERNAME);
+        creator.setPlatform("INSTAGRAM");
         creator.setUsername(DEMO_USERNAME);
         creator.setNiche("Fitness");
         creator.setConnectedAt(LocalDateTime.now());
@@ -102,7 +112,7 @@ public class DataSeedService implements CommandLineRunner {
 
         List<Post> savedPosts = postRepository.saveAll(postBatch);
         for (Post p : savedPosts) {
-            phylloIdToPost.put(p.getInstagramId(), p);
+            phylloIdToPost.put(p.getPhylloId(), p);
         }
         log.info("Inserted {} posts", savedPosts.size());
 
@@ -143,58 +153,71 @@ public class DataSeedService implements CommandLineRunner {
 
     private Post buildPost(Creator creator, JsonNode postNode) {
         Post post = new Post();
-        post.setInstagramId(postNode.get("id").asText());
+        post.setPhylloId(postNode.get("id").asText());
+        post.setExternalId(getTextOrNull(postNode, "external_id"));
+        post.setPlatform(creator.getPlatform());
         post.setCreator(creator);
 
-        String caption = getTextOrNull(postNode, "title");
+        post.setTitle(getTextOrNull(postNode, "title"));
+        String caption = getTextOrNull(postNode, "description");
+        if (caption == null) caption = getTextOrNull(postNode, "title");
         post.setCaption(caption != null ? caption : "");
-        post.setMediaType(getTextOrNull(postNode, "format"));
-        post.setMediaProductType(getTextOrNull(postNode, "type"));
+        post.setFormat(getTextOrNull(postNode, "format"));
+        post.setType(getTextOrNull(postNode, "type"));
         post.setMediaUrl(getTextOrNull(postNode, "media_url"));
-        post.setPermalink(getTextOrNull(postNode, "url"));
+        post.setUrl(getTextOrNull(postNode, "url"));
         post.setThumbnailUrl(getTextOrNull(postNode, "thumbnail_url"));
+        post.setPersistentThumbnailUrl(getTextOrNull(postNode, "persistent_thumbnail_url"));
+        post.setVisibility(getTextOrNull(postNode, "visibility"));
+        post.setPlatformProfileId(getTextOrNull(postNode, "platform_profile_id"));
+        post.setPlatformProfileName(getTextOrNull(postNode, "platform_profile_name"));
+        post.setDuration(getIntOrNull(postNode, "duration"));
+        if (postNode.has("is_owned_by_platform_user") && !postNode.get("is_owned_by_platform_user").isNull()) {
+            post.setIsOwnedByPlatformUser(postNode.get("is_owned_by_platform_user").asBoolean());
+        }
 
         // Hashtags
+        post.setHashtags(joinArray(postNode.get("hashtags")));
         JsonNode hashtagsNode = postNode.get("hashtags");
-        if (hashtagsNode != null && hashtagsNode.isArray() && !hashtagsNode.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < hashtagsNode.size(); i++) {
-                if (i > 0) sb.append(",");
-                sb.append(hashtagsNode.get(i).asText());
-            }
-            post.setHashtags(sb.toString());
+        if (hashtagsNode != null && hashtagsNode.isArray()) {
             post.setHashtagCount(hashtagsNode.size());
         }
+
+        // Mentions
+        post.setMentions(joinArray(postNode.get("mentions")));
 
         // Metrics
         JsonNode engagement = postNode.get("engagement");
         PostMetrics metrics = new PostMetrics();
-        metrics.setLikes(getIntOrZero(engagement, "like_count"));
-        metrics.setComments(getIntOrZero(engagement, "comment_count"));
-        metrics.setSaves(getIntOrNull(engagement, "save_count"));
-        metrics.setShares(getIntOrNull(engagement, "share_count"));
-        metrics.setReposts(getIntOrNull(engagement, "repost_count"));
-        metrics.setReach(getIntOrNull(engagement, "reach_organic_count"));
-        metrics.setImpressions(getIntOrNull(engagement, "impression_organic_count"));
-        metrics.setPlays(getIntOrNull(engagement, "view_count"));
+        metrics.setLikeCount(getIntOrZero(engagement, "like_count"));
+        metrics.setCommentCount(getIntOrZero(engagement, "comment_count"));
+        metrics.setSaveCount(getIntOrNull(engagement, "save_count"));
+        metrics.setShareCount(getIntOrNull(engagement, "share_count"));
+        metrics.setRepostCount(getIntOrNull(engagement, "repost_count"));
+        metrics.setDislikeCount(getIntOrNull(engagement, "dislike_count"));
+        metrics.setReachOrganicCount(getIntOrNull(engagement, "reach_organic_count"));
+        metrics.setImpressionOrganicCount(getIntOrNull(engagement, "impression_organic_count"));
+        metrics.setViewCount(getLongOrNull(engagement, "view_count"));
+        metrics.setWatchTimeInHours(getDoubleOrNull(engagement, "watch_time_in_hours"));
+        metrics.setAvgWatchTimeInSec(getDoubleOrNull(engagement, "avg_watch_time_in_sec"));
+        metrics.setClickCount(getIntOrNull(engagement, "click_count"));
+        metrics.setReplayCount(getIntOrNull(engagement, "replay_count"));
 
         // Compute rates
-        Integer reach = metrics.getReach();
-        if (metrics.getSaves() != null && reach != null && reach > 0)
-            metrics.setSaveRate(metrics.getSaves() * 100.0 / reach);
-        if (metrics.getShares() != null && reach != null && reach > 0)
-            metrics.setShareRate(metrics.getShares() * 100.0 / reach);
+        Integer reach = metrics.getReachOrganicCount();
+        if (metrics.getSaveCount() != null && reach != null && reach > 0)
+            metrics.setSaveRate(metrics.getSaveCount() * 100.0 / reach);
+        if (metrics.getShareCount() != null && reach != null && reach > 0)
+            metrics.setShareRate(metrics.getShareCount() * 100.0 / reach);
         if (reach != null && reach > 0) {
-            int likes = metrics.getLikes() != null ? metrics.getLikes() : 0;
-            int comments = metrics.getComments() != null ? metrics.getComments() : 0;
-            int saves = metrics.getSaves() != null ? metrics.getSaves() : 0;
-            int shares = metrics.getShares() != null ? metrics.getShares() : 0;
+            int likes = metrics.getLikeCount() != null ? metrics.getLikeCount() : 0;
+            int comments = metrics.getCommentCount() != null ? metrics.getCommentCount() : 0;
+            int saves = metrics.getSaveCount() != null ? metrics.getSaveCount() : 0;
+            int shares = metrics.getShareCount() != null ? metrics.getShareCount() : 0;
             metrics.setEngagementRate((likes + comments + saves + shares) * 100.0 / reach);
         }
 
         post.setMetrics(metrics);
-        Integer viewCount = getIntOrNull(engagement, "view_count");
-        post.setViewCount(viewCount != null ? viewCount.longValue() : null);
 
         // Timestamp
         String timestamp = postNode.get("published_at").asText();
@@ -229,13 +252,21 @@ public class DataSeedService implements CommandLineRunner {
         if (post == null) return null;
 
         Comment comment = new Comment();
-        comment.setInstagramId(commentNode.get("id").asText());
+        comment.setPhylloId(commentNode.get("id").asText());
+        comment.setExternalId(getTextOrNull(commentNode, "external_id"));
         comment.setPost(post);
         comment.setCreatorId(creatorId);
         comment.setUsername(commentNode.get("commenter_username").asText());
+        comment.setCommenterId(getTextOrNull(commentNode, "commenter_id"));
+        comment.setCommenterProfileUrl(getTextOrNull(commentNode, "commenter_profile_url"));
+        comment.setCommenterDisplayName(getTextOrNull(commentNode, "commenter_display_name"));
         comment.setText(commentNode.get("text").asText());
         comment.setLikeCount(getIntOrZero(commentNode, "like_count"));
         comment.setReplyCount(getIntOrZero(commentNode, "reply_count"));
+        if (contentNode.has("url")) comment.setContentUrl(getTextOrNull(contentNode, "url"));
+        if (contentNode.has("published_at") && !contentNode.get("published_at").isNull()) {
+            comment.setContentPublishedAt(LocalDateTime.parse(contentNode.get("published_at").asText(), DateTimeFormatter.ISO_DATE_TIME));
+        }
 
         String text = comment.getText().trim().toLowerCase();
         comment.setIsQuestion(text.endsWith("?") ||
@@ -261,5 +292,25 @@ public class DataSeedService implements CommandLineRunner {
     private int getIntOrZero(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return (value != null && !value.isNull()) ? value.asInt() : 0;
+    }
+
+    private Long getLongOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asLong() : null;
+    }
+
+    private Double getDoubleOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asDouble() : null;
+    }
+
+    private String joinArray(JsonNode arrayNode) {
+        if (arrayNode == null || !arrayNode.isArray() || arrayNode.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arrayNode.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(arrayNode.get(i).asText());
+        }
+        return sb.toString();
     }
 }

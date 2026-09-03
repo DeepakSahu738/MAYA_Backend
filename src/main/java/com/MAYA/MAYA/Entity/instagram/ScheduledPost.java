@@ -46,7 +46,7 @@ public class ScheduledPost {
     
     private LocalDateTime publishedAt;
     
-    private String publishedInstagramId;
+    private String publishedExternalId;
     
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

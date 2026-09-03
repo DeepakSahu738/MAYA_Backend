@@ -3,6 +3,7 @@ package com.MAYA.MAYA.Controller;
 import com.MAYA.MAYA.Service.CreatorAccessService;
 import com.MAYA.MAYA.Service.RateLimiterService;
 import com.MAYA.MAYA.Service.ai.MayaAiService;
+import com.MAYA.MAYA.Service.analytics.DashboardService;
 import dev.langchain4j.service.TokenStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class AgentChatController {
     private final MayaAiService mayaAiService;
     private final CreatorAccessService creatorAccessService;
     private final RateLimiterService rateLimiterService;
+    private final DashboardService dashboardService;
 
     // Rate limits
     private static final int CHAT_MAX_REQUESTS = 30;        // 30 messages
@@ -78,7 +80,8 @@ public class AgentChatController {
         // Call the orchestrator — it decides which tools to use and streams the response
         String currentDate = java.time.LocalDate.now().toString();
         String sessionId = request.sessionId() != null ? request.sessionId() : "default";
-        TokenStream tokenStream = mayaAiService.chat(sessionId, request.message(), request.creatorId(), currentDate);
+        String platformContext = dashboardService.buildPlatformAiContext(request.creatorId());
+        TokenStream tokenStream = mayaAiService.chat(sessionId, request.message(), request.creatorId(), currentDate, platformContext);
 
         // Wire the token stream to our SSE sink
         tokenStream

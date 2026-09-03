@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
-    Optional<Post> findByInstagramId(String instagramId);
+    Optional<Post> findByPhylloId(String phylloId);
     List<Post> findByCreatorIdOrderByPostedAtDesc(Long creatorId);
     List<Post> findByCreatorIdAndPostedAtBetween(Long creatorId, LocalDateTime start, LocalDateTime end);
     
@@ -20,12 +20,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // New query methods
     List<Post> findByCreatorIdOrderByMetricsEngagementRateDesc(Long creatorId);
     List<Post> findByCreatorIdOrderByMetricsSaveRateDesc(Long creatorId);
-    List<Post> findByCreatorIdAndMediaType(Long creatorId, String mediaType);
+    List<Post> findByCreatorIdAndFormat(Long creatorId, String format);
     List<Post> findByCreatorIdAndHasCtaTrue(Long creatorId);
     List<Post> findByCreatorIdAndHasQuestionTrue(Long creatorId);
-    List<Post> findByCreatorIdAndMediaProductType(Long creatorId, String mediaProductType);
+    List<Post> findByCreatorIdAndType(Long creatorId, String type);
     void deleteByCreatorId(Long creatorId);
 
-    @Query("SELECT p.instagramId FROM Post p WHERE p.creator.id = :creatorId")
-    List<String> findInstagramIdsByCreatorId(Long creatorId);
+    @Query("SELECT p.phylloId FROM Post p WHERE p.creator.id = :creatorId")
+    List<String> findPhylloIdsByCreatorId(Long creatorId);
 }

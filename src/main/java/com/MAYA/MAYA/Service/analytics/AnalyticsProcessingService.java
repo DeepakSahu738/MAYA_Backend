@@ -101,20 +101,20 @@ public class AnalyticsProcessingService implements CommandLineRunner {
             
             OptionalDouble avgReach = tagPosts.stream()
                 .map(Post::getMetrics)
-                .filter(m -> m.getReach() != null)
-                .mapToDouble(PostMetrics::getReach)
+                .filter(m -> m.getReachOrganicCount() != null)
+                .mapToDouble(PostMetrics::getReachOrganicCount)
                 .average();
             
             OptionalDouble avgEngagement = tagPosts.stream()
                 .map(Post::getMetrics)
-                .filter(m -> m.getReach() != null && m.getReach() > 0)
+                .filter(m -> m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
                 .mapToDouble(m -> computeEngagementRate(m))
                 .average();
             
             OptionalDouble avgSaveRate = tagPosts.stream()
                 .map(Post::getMetrics)
-                .filter(m -> m.getSaves() != null && m.getReach() != null && m.getReach() > 0)
-                .mapToDouble(m -> m.getSaves() * 100.0 / m.getReach())
+                .filter(m -> m.getSaveCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
+                .mapToDouble(m -> m.getSaveCount() * 100.0 / m.getReachOrganicCount())
                 .average();
             
             LocalDateTime lastUsed = tagPosts.stream()
@@ -319,12 +319,12 @@ public class AnalyticsProcessingService implements CommandLineRunner {
     // ===== Helpers =====
     
     private double computeEngagementRate(PostMetrics m) {
-        if (m.getReach() == null || m.getReach() == 0) return 0.0;
-        int likes = m.getLikes() != null ? m.getLikes() : 0;
-        int comments = m.getComments() != null ? m.getComments() : 0;
-        int saves = m.getSaves() != null ? m.getSaves() : 0;
-        int shares = m.getShares() != null ? m.getShares() : 0;
-        return (likes + comments + saves + shares) * 100.0 / m.getReach();
+        if (m.getReachOrganicCount() == null || m.getReachOrganicCount() == 0) return 0.0;
+        int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+        int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+        int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+        int shares = m.getShareCount() != null ? m.getShareCount() : 0;
+        return (likes + comments + saves + shares) * 100.0 / m.getReachOrganicCount();
     }
     
     private List<String> parseHashtags(String hashtags) {

@@ -46,6 +46,7 @@ public class NightlySyncJob {
     private final CommentRepository commentRepository;
     private final HashtagPerformanceRepository hashtagPerformanceRepository;
     private final TopCommenterRepository topCommenterRepository;
+    private final WeeklyReportRepository weeklyReportRepository;
     private final PhylloService phylloService;
     private final CreatorAccessService creatorAccessService;
     private final AnalyticsProcessingService analyticsProcessingService;
@@ -100,6 +101,9 @@ public class NightlySyncJob {
                 rateLimitDelay();
 
                 // 2. DELETE old posts + comments → batch INSERT fresh
+                // Clear weekly_reports FK refs to posts first, else post delete
+                // violates the top_post_id / worst_post_id foreign key constraint.
+                weeklyReportRepository.clearPostReferencesByCreatorId(creatorId);
                 commentRepository.deleteByCreatorId(creatorId);
                 postRepository.deleteByCreatorId(creatorId);
                 postRepository.flush(); // Force DELETE to execute in DB before INSERT
@@ -170,8 +174,12 @@ public class NightlySyncJob {
 
             JsonNode reputation = data.get("reputation");
             if (reputation != null) {
+                // follower_count for most platforms; subscriber_count for YouTube/Twitch/
+                // LinkedIn/AdSense/Spotify. Prefer follower_count, fall back to subscriber_count.
                 if (reputation.has("follower_count") && !reputation.get("follower_count").isNull())
                     creator.setFollowerCount(reputation.get("follower_count").asInt());
+                else if (reputation.has("subscriber_count") && !reputation.get("subscriber_count").isNull())
+                    creator.setFollowerCount(reputation.get("subscriber_count").asInt());
                 if (reputation.has("following_count") && !reputation.get("following_count").isNull())
                     creator.setFollowingCount(reputation.get("following_count").asInt());
                 if (reputation.has("content_count") && !reputation.get("content_count").isNull())
@@ -230,7 +238,7 @@ public class NightlySyncJob {
     private List<Comment> fetchCommentsForPost(String accountId, Post post, Long creatorId) {
         List<Comment> comments = new ArrayList<>();
         try {
-            JsonNode commentData = phylloService.fetchComments(accountId, post.getInstagramId(), 100);
+            JsonNode commentData = phylloService.fetchComments(accountId, post.getPhylloId(), 100);
             JsonNode commentsArray = commentData.get("data");
             if (commentsArray == null || !commentsArray.isArray()) return comments;
 
@@ -246,63 +254,76 @@ public class NightlySyncJob {
     // === BUILD POST ENTITY ===
     private Post buildPost(JsonNode node, Creator creator) {
         Post post = new Post();
-        post.setInstagramId(node.get("id").asText());
+        post.setPhylloId(node.get("id").asText());
+        post.setExternalId(getTextOrNull(node, "external_id"));
+        post.setPlatform(creator.getPlatform());
         post.setCreator(creator);
 
-        String caption = getTextOrNull(node, "title");
+        post.setTitle(getTextOrNull(node, "title"));
+        String caption = getTextOrNull(node, "description");
+        if (caption == null) caption = getTextOrNull(node, "title");
         post.setCaption(caption != null ? caption : "");
-        post.setMediaType(getTextOrNull(node, "format"));
-        post.setMediaProductType(getTextOrNull(node, "type"));
+        post.setFormat(getTextOrNull(node, "format"));
+        post.setType(getTextOrNull(node, "type"));
         post.setMediaUrl(getTextOrNull(node, "media_url"));
-        post.setPermalink(getTextOrNull(node, "url"));
+        post.setUrl(getTextOrNull(node, "url"));
         post.setThumbnailUrl(getTextOrNull(node, "thumbnail_url"));
+        post.setPersistentThumbnailUrl(getTextOrNull(node, "persistent_thumbnail_url"));
+        post.setVisibility(getTextOrNull(node, "visibility"));
+        post.setPlatformProfileId(getTextOrNull(node, "platform_profile_id"));
+        post.setPlatformProfileName(getTextOrNull(node, "platform_profile_name"));
+        post.setDuration(getIntOrNull(node, "duration"));
+        if (node.has("is_owned_by_platform_user") && !node.get("is_owned_by_platform_user").isNull()) {
+            post.setIsOwnedByPlatformUser(node.get("is_owned_by_platform_user").asBoolean());
+        }
 
         // Hashtags
+        post.setHashtags(joinArray(node.get("hashtags")));
         JsonNode hashtagsNode = node.get("hashtags");
-        if (hashtagsNode != null && hashtagsNode.isArray() && !hashtagsNode.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < hashtagsNode.size(); i++) {
-                if (i > 0) sb.append(",");
-                sb.append(hashtagsNode.get(i).asText());
-            }
-            post.setHashtags(sb.toString());
+        if (hashtagsNode != null && hashtagsNode.isArray()) {
             post.setHashtagCount(hashtagsNode.size());
         }
+
+        // Mentions
+        post.setMentions(joinArray(node.get("mentions")));
 
         // Metrics
         JsonNode engagement = node.get("engagement");
         if (engagement != null) {
             PostMetrics metrics = new PostMetrics();
-            metrics.setLikes(getIntOrZero(engagement, "like_count"));
-            metrics.setComments(getIntOrZero(engagement, "comment_count"));
-            metrics.setSaves(getIntOrNull(engagement, "save_count"));
-            metrics.setShares(getIntOrNull(engagement, "share_count"));
-            metrics.setReposts(getIntOrNull(engagement, "repost_count"));
-            metrics.setReach(getIntOrNull(engagement, "reach_organic_count"));
-            metrics.setImpressions(getIntOrNull(engagement, "impression_organic_count"));
-            metrics.setPlays(getIntOrNull(engagement, "view_count"));
+            metrics.setLikeCount(getIntOrZero(engagement, "like_count"));
+            metrics.setCommentCount(getIntOrZero(engagement, "comment_count"));
+            metrics.setSaveCount(getIntOrNull(engagement, "save_count"));
+            metrics.setShareCount(getIntOrNull(engagement, "share_count"));
+            metrics.setRepostCount(getIntOrNull(engagement, "repost_count"));
+            metrics.setDislikeCount(getIntOrNull(engagement, "dislike_count"));
+            metrics.setReachOrganicCount(getIntOrNull(engagement, "reach_organic_count"));
+            metrics.setImpressionOrganicCount(getIntOrNull(engagement, "impression_organic_count"));
+            metrics.setViewCount(getLongOrNull(engagement, "view_count"));
+            metrics.setWatchTimeInHours(getDoubleOrNull(engagement, "watch_time_in_hours"));
+            metrics.setAvgWatchTimeInSec(getDoubleOrNull(engagement, "avg_watch_time_in_sec"));
+            metrics.setClickCount(getIntOrNull(engagement, "click_count"));
+            metrics.setReplayCount(getIntOrNull(engagement, "replay_count"));
 
             // Compute rates
-            Integer reach = metrics.getReach();
-            int likes = metrics.getLikes() != null ? metrics.getLikes() : 0;
-            int comments = metrics.getComments() != null ? metrics.getComments() : 0;
-            int saves = metrics.getSaves() != null ? metrics.getSaves() : 0;
-            int shares = metrics.getShares() != null ? metrics.getShares() : 0;
+            Integer reach = metrics.getReachOrganicCount();
+            int likes = metrics.getLikeCount() != null ? metrics.getLikeCount() : 0;
+            int comments = metrics.getCommentCount() != null ? metrics.getCommentCount() : 0;
+            int saves = metrics.getSaveCount() != null ? metrics.getSaveCount() : 0;
+            int shares = metrics.getShareCount() != null ? metrics.getShareCount() : 0;
             int totalEngagement = likes + comments + saves + shares;
 
             // Validate reach: must be >= total engagement, otherwise unreliable
             boolean reachReliable = reach != null && reach > 0 && reach >= totalEngagement;
             if (reachReliable) {
-                if (metrics.getSaves() != null)
-                    metrics.setSaveRate(Math.min(metrics.getSaves() * 100.0 / reach, 100.0));
-                if (metrics.getShares() != null)
-                    metrics.setShareRate(Math.min(metrics.getShares() * 100.0 / reach, 100.0));
+                if (metrics.getSaveCount() != null)
+                    metrics.setSaveRate(Math.min(metrics.getSaveCount() * 100.0 / reach, 100.0));
+                if (metrics.getShareCount() != null)
+                    metrics.setShareRate(Math.min(metrics.getShareCount() * 100.0 / reach, 100.0));
                 metrics.setEngagementRate(Math.min(totalEngagement * 100.0 / reach, 100.0));
             }
 
             post.setMetrics(metrics);
-            Integer viewCount = getIntOrNull(engagement, "view_count");
-            post.setViewCount(viewCount != null ? viewCount.longValue() : null);
         }
 
         // Timestamp
@@ -335,10 +356,14 @@ public class NightlySyncJob {
     // === BUILD COMMENT ENTITY ===
     private Comment buildComment(JsonNode node, Post post, Long creatorId) {
         Comment comment = new Comment();
-        comment.setInstagramId(node.get("id").asText());
+        comment.setPhylloId(node.get("id").asText());
+        comment.setExternalId(getTextOrNull(node, "external_id"));
         comment.setPost(post);
         comment.setCreatorId(creatorId);
         comment.setUsername(node.has("commenter_username") ? node.get("commenter_username").asText() : "unknown");
+        comment.setCommenterId(getTextOrNull(node, "commenter_id"));
+        comment.setCommenterProfileUrl(getTextOrNull(node, "commenter_profile_url"));
+        comment.setCommenterDisplayName(getTextOrNull(node, "commenter_display_name"));
         comment.setText(node.has("text") ? node.get("text").asText() : "");
         comment.setLikeCount(getIntOrZero(node, "like_count"));
         comment.setReplyCount(getIntOrZero(node, "reply_count"));
@@ -346,6 +371,15 @@ public class NightlySyncJob {
         String text = comment.getText().trim().toLowerCase();
         comment.setIsQuestion(text.endsWith("?") ||
             text.matches("^(how|what|when|where|why|which|can|do|did|is|are|should|would|could|will)\\b.*"));
+
+        // Parent content reference
+        JsonNode content = node.get("content");
+        if (content != null) {
+            comment.setContentUrl(getTextOrNull(content, "url"));
+            if (content.has("published_at") && !content.get("published_at").isNull()) {
+                comment.setContentPublishedAt(LocalDateTime.parse(content.get("published_at").asText(), DateTimeFormatter.ISO_DATE_TIME));
+            }
+        }
 
         if (node.has("published_at") && !node.get("published_at").isNull()) {
             comment.setCommentedAt(LocalDateTime.parse(node.get("published_at").asText(), DateTimeFormatter.ISO_DATE_TIME));
@@ -374,5 +408,25 @@ public class NightlySyncJob {
     private int getIntOrZero(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return (value != null && !value.isNull()) ? value.asInt() : 0;
+    }
+
+    private Long getLongOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asLong() : null;
+    }
+
+    private Double getDoubleOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asDouble() : null;
+    }
+
+    private String joinArray(JsonNode arrayNode) {
+        if (arrayNode == null || !arrayNode.isArray() || arrayNode.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arrayNode.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(arrayNode.get(i).asText());
+        }
+        return sb.toString();
     }
 }

@@ -37,8 +37,8 @@ public class AnalyticsService {
         
         OptionalDouble avgRate = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getSaves() != null && m.getReach() != null && m.getReach() > 0)
-            .mapToDouble(m -> m.getSaves() * 100.0 / m.getReach())
+            .filter(m -> m.getSaveCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
+            .mapToDouble(m -> m.getSaveCount() * 100.0 / m.getReachOrganicCount())
             .average();
         
         Double currentValue = avgRate.isPresent() ? round(avgRate.getAsDouble()) : null;
@@ -53,8 +53,8 @@ public class AnalyticsService {
         
         OptionalDouble avgRate = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getShares() != null && m.getReach() != null && m.getReach() > 0)
-            .mapToDouble(m -> m.getShares() * 100.0 / m.getReach())
+            .filter(m -> m.getShareCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
+            .mapToDouble(m -> m.getShareCount() * 100.0 / m.getReachOrganicCount())
             .average();
         
         Double currentValue = avgRate.isPresent() ? round(avgRate.getAsDouble()) : null;
@@ -69,8 +69,8 @@ public class AnalyticsService {
         
         OptionalDouble avgRate = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getComments() != null && m.getReach() != null && m.getReach() > 0)
-            .mapToDouble(m -> m.getComments() * 100.0 / m.getReach())
+            .filter(m -> m.getCommentCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
+            .mapToDouble(m -> m.getCommentCount() * 100.0 / m.getReachOrganicCount())
             .average();
         
         Double currentValue = avgRate.isPresent() ? round(avgRate.getAsDouble()) : null;
@@ -85,8 +85,8 @@ public class AnalyticsService {
         
         OptionalDouble avgRatio = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getComments() != null && m.getComments() > 0)
-            .mapToDouble(m -> m.getLikes() * 1.0 / m.getComments())
+            .filter(m -> m.getCommentCount() != null && m.getCommentCount() > 0)
+            .mapToDouble(m -> m.getLikeCount() * 1.0 / m.getCommentCount())
             .average();
         
         Double currentValue = avgRatio.isPresent() ? round(avgRatio.getAsDouble()) : null;
@@ -100,10 +100,10 @@ public class AnalyticsService {
         List<Post> posts = getRecentPosts(creatorId, postCount);
         
         OptionalDouble avgRate = posts.stream()
-            .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics)
-            .filter(m -> m.getPlays() != null && m.getImpressions() != null && m.getImpressions() > 0)
-            .mapToDouble(m -> m.getPlays() * 100.0 / m.getImpressions())
+            .filter(m -> m.getViewCount() != null && m.getImpressionOrganicCount() != null && m.getImpressionOrganicCount() > 0)
+            .mapToDouble(m -> m.getViewCount() * 100.0 / m.getImpressionOrganicCount())
             .average();
         
         Double currentValue = avgRate.isPresent() ? round(avgRate.getAsDouble()) : null;
@@ -134,10 +134,10 @@ public class AnalyticsService {
             double questionPct = questions * 100.0 / postComments.size();
             
             if (questionPct >= 50) {
-                questionHeavyLikesSum += post.getMetrics().getLikes();
+                questionHeavyLikesSum += post.getMetrics().getLikeCount();
                 questionHeavyCount++;
             } else {
-                statementHeavyLikesSum += post.getMetrics().getLikes();
+                statementHeavyLikesSum += post.getMetrics().getLikeCount();
                 statementHeavyCount++;
             }
         }
@@ -155,12 +155,12 @@ public class AnalyticsService {
         
         OptionalDouble ctaAvg = posts.stream()
             .filter(p -> Boolean.TRUE.equals(p.getHasCta()))
-            .mapToDouble(p -> p.getMetrics().getLikes() + p.getMetrics().getComments())
+            .mapToDouble(p -> p.getMetrics().getLikeCount() + p.getMetrics().getCommentCount())
             .average();
         
         OptionalDouble noCtaAvg = posts.stream()
             .filter(p -> !Boolean.TRUE.equals(p.getHasCta()))
-            .mapToDouble(p -> p.getMetrics().getLikes() + p.getMetrics().getComments())
+            .mapToDouble(p -> p.getMetrics().getLikeCount() + p.getMetrics().getCommentCount())
             .average();
         
         Double ctaValue = ctaAvg.isPresent() ? round(ctaAvg.getAsDouble()) : null;
@@ -214,10 +214,10 @@ public class AnalyticsService {
                 LocalDate wEnd = wStart.plusDays(7);
                 if (!postDate.isBefore(wStart) && postDate.isBefore(wEnd)) {
                     PostMetrics m = post.getMetrics();
-                    weeklyTotals[w] += m.getLikes()
-                        + m.getComments()
-                        + (m.getSaves() != null ? m.getSaves() : 0)
-                        + (m.getShares() != null ? m.getShares() : 0);
+                    weeklyTotals[w] += m.getLikeCount()
+                        + m.getCommentCount()
+                        + (m.getSaveCount() != null ? m.getSaveCount() : 0)
+                        + (m.getShareCount() != null ? m.getShareCount() : 0);
                     break;
                 }
             }
@@ -237,8 +237,8 @@ public class AnalyticsService {
         
         OptionalDouble avgEfficiency = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m.getReach() != null && m.getImpressions() != null && m.getImpressions() > 0)
-            .mapToDouble(m -> m.getReach() * 100.0 / m.getImpressions())
+            .filter(m -> m.getReachOrganicCount() != null && m.getImpressionOrganicCount() != null && m.getImpressionOrganicCount() > 0)
+            .mapToDouble(m -> m.getReachOrganicCount() * 100.0 / m.getImpressionOrganicCount())
             .average();
         
         Double currentValue = avgEfficiency.isPresent() ? round(avgEfficiency.getAsDouble()) : null;
@@ -254,21 +254,21 @@ public class AnalyticsService {
         // Try reach-based ER first (only using posts with reliable reach)
         OptionalDouble avgEr = posts.stream()
             .map(Post::getMetrics)
-            .filter(m -> m != null && m.getReach() != null && m.getReach() > 0)
+            .filter(m -> m != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
             .filter(m -> {
                 // Validate: reach must be >= total engagement, otherwise data is garbage
-                int likes = m.getLikes() != null ? m.getLikes() : 0;
-                int comments = m.getComments() != null ? m.getComments() : 0;
-                int saves = m.getSaves() != null ? m.getSaves() : 0;
-                int shares = m.getShares() != null ? m.getShares() : 0;
-                return m.getReach() >= (likes + comments + saves + shares);
+                int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+                int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+                int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+                int shares = m.getShareCount() != null ? m.getShareCount() : 0;
+                return m.getReachOrganicCount() >= (likes + comments + saves + shares);
             })
             .mapToDouble(m -> {
-                int likes = m.getLikes() != null ? m.getLikes() : 0;
-                int comments = m.getComments() != null ? m.getComments() : 0;
-                int saves = m.getSaves() != null ? m.getSaves() : 0;
-                int shares = m.getShares() != null ? m.getShares() : 0;
-                return (likes + comments + saves + shares) * 100.0 / m.getReach();
+                int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+                int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+                int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+                int shares = m.getShareCount() != null ? m.getShareCount() : 0;
+                return (likes + comments + saves + shares) * 100.0 / m.getReachOrganicCount();
             })
             .average();
 
@@ -283,10 +283,10 @@ public class AnalyticsService {
                     .map(Post::getMetrics)
                     .filter(java.util.Objects::nonNull)
                     .mapToDouble(m -> {
-                        int likes = m.getLikes() != null ? m.getLikes() : 0;
-                        int comments = m.getComments() != null ? m.getComments() : 0;
-                        int saves = m.getSaves() != null ? m.getSaves() : 0;
-                        int shares = m.getShares() != null ? m.getShares() : 0;
+                        int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+                        int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+                        int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+                        int shares = m.getShareCount() != null ? m.getShareCount() : 0;
                         return (likes + comments + saves + shares) * 100.0 / creator.getFollowerCount();
                     })
                     .average();
@@ -418,22 +418,22 @@ public class AnalyticsService {
             return buildMetric("content_mix", null, null, "pct");
         }
         
-        long imageCount = posts.stream().filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType())).count();
-        long videoCount = posts.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType())).count();
+        long imageCount = posts.stream().filter(p -> "IMAGE".equalsIgnoreCase(p.getFormat())).count();
+        long videoCount = posts.stream().filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat())).count();
         long total = imageCount + videoCount;
         
         Double videoPct = total > 0 ? round(videoCount * 100.0 / total) : null;
         
         // Compare avg engagement rate by format
         OptionalDouble imageAvgEr = posts.stream()
-            .filter(p -> "IMAGE".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "IMAGE".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics)
             .filter(m -> m.getEngagementRate() != null)
             .mapToDouble(PostMetrics::getEngagementRate)
             .average();
         
         OptionalDouble videoAvgEr = posts.stream()
-            .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat()))
             .map(Post::getMetrics)
             .filter(m -> m.getEngagementRate() != null)
             .mapToDouble(PostMetrics::getEngagementRate)
@@ -445,6 +445,135 @@ public class AnalyticsService {
         return buildMetric("content_mix_video_pct", videoPct, delta, "%");
     }
     
+    // ======================================================================
+    // PLATFORM-SPECIFIC METRICS (Facebook & YouTube hero cards)
+    // ======================================================================
+
+    // ---- YouTube ----
+
+    /**
+     * YouTube view-based engagement rate: (likes + comments) / views.
+     * YouTube has no reach/impressions, so views is the denominator.
+     */
+    public Double calculateViewEngagementRate(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        OptionalDouble avg = posts.stream()
+            .map(Post::getMetrics)
+            .filter(m -> m != null && m.getViewCount() != null && m.getViewCount() > 0)
+            .mapToDouble(m -> {
+                int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+                int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+                return (likes + comments) * 100.0 / m.getViewCount();
+            })
+            .average();
+        return avg.isPresent() ? round(avg.getAsDouble()) : null;
+    }
+
+    /** YouTube like-to-view ratio: likes / views. */
+    public Double calculateLikeToViewRatio(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        OptionalDouble avg = posts.stream()
+            .map(Post::getMetrics)
+            .filter(m -> m != null && m.getViewCount() != null && m.getViewCount() > 0 && m.getLikeCount() != null)
+            .mapToDouble(m -> m.getLikeCount() * 100.0 / m.getViewCount())
+            .average();
+        return avg.isPresent() ? round(avg.getAsDouble()) : null;
+    }
+
+    /**
+     * YouTube approval rate: likes / (likes + dislikes). YouTube is the only
+     * platform Phyllo exposes dislikes for. Returns null if no dislike data.
+     */
+    public Double calculateApprovalRate(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        long totalLikes = 0;
+        long totalDislikes = 0;
+        boolean hasDislikeData = false;
+        for (Post p : posts) {
+            PostMetrics m = p.getMetrics();
+            if (m == null) continue;
+            if (m.getDislikeCount() != null) {
+                hasDislikeData = true;
+                totalDislikes += m.getDislikeCount();
+            }
+            if (m.getLikeCount() != null) totalLikes += m.getLikeCount();
+        }
+        if (!hasDislikeData || (totalLikes + totalDislikes) == 0) return null;
+        return round(totalLikes * 100.0 / (totalLikes + totalDislikes));
+    }
+
+    /**
+     * YouTube views per subscriber: avg views per post / subscriber count.
+     * Uses Creator.followerCount (subscriber_count is mapped into it on sync).
+     */
+    public Double calculateViewsPerSubscriber(Long creatorId) {
+        Creator creator = creatorRepository.findById(creatorId).orElse(null);
+        if (creator == null || creator.getFollowerCount() == null || creator.getFollowerCount() <= 0) return null;
+        List<Post> posts = getRecentPosts(creatorId, null);
+        OptionalDouble avgViews = posts.stream()
+            .map(Post::getMetrics)
+            .filter(m -> m != null && m.getViewCount() != null)
+            .mapToDouble(PostMetrics::getViewCount)
+            .average();
+        if (avgViews.isEmpty()) return null;
+        return round(avgViews.getAsDouble() / creator.getFollowerCount());
+    }
+
+    // ---- Facebook ----
+
+    /**
+     * Facebook reach efficiency: reach / impressions. Facebook is the only one
+     * of the 3 target platforms with both reach and impressions.
+     */
+    public Double calculateFbReachEfficiency(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        OptionalDouble avg = posts.stream()
+            .map(Post::getMetrics)
+            .filter(m -> m != null && m.getReachOrganicCount() != null
+                && m.getImpressionOrganicCount() != null && m.getImpressionOrganicCount() > 0)
+            .mapToDouble(m -> m.getReachOrganicCount() * 100.0 / m.getImpressionOrganicCount())
+            .average();
+        return avg.isPresent() ? round(avg.getAsDouble()) : null;
+    }
+
+    /** Facebook total watch time in hours across recent posts. */
+    public Double calculateWatchTimeHours(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        double total = posts.stream()
+            .map(Post::getMetrics)
+            .filter(m -> m != null && m.getWatchTimeInHours() != null)
+            .mapToDouble(PostMetrics::getWatchTimeInHours)
+            .sum();
+        return total > 0 ? round(total) : null;
+    }
+
+    /** Facebook view rate: views / reach (of those reached, how many watched). */
+    public Double calculateViewRate(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        OptionalDouble avg = posts.stream()
+            .map(Post::getMetrics)
+            .filter(m -> m != null && m.getViewCount() != null
+                && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0)
+            .mapToDouble(m -> m.getViewCount() * 100.0 / m.getReachOrganicCount())
+            .average();
+        return avg.isPresent() ? round(avg.getAsDouble()) : null;
+    }
+
+    /** Facebook total click count across recent posts (link/traffic signal). */
+    public Double calculateClickSignal(Long creatorId) {
+        List<Post> posts = getRecentPosts(creatorId, null);
+        long total = 0;
+        boolean hasClickData = false;
+        for (Post p : posts) {
+            PostMetrics m = p.getMetrics();
+            if (m != null && m.getClickCount() != null) {
+                hasClickData = true;
+                total += m.getClickCount();
+            }
+        }
+        return hasClickData ? (double) total : null;
+    }
+
     // ======================================================================
     // HELPER METHODS
     // ======================================================================
@@ -461,52 +590,52 @@ public class AnalyticsService {
     
     private Double postSaveRate(Post post) {
         PostMetrics m = post.getMetrics();
-        if (m.getSaves() != null && m.getReach() != null && m.getReach() > 0) {
-            return m.getSaves() * 100.0 / m.getReach();
+        if (m.getSaveCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0) {
+            return m.getSaveCount() * 100.0 / m.getReachOrganicCount();
         }
         return null;
     }
     
     private Double postShareRate(Post post) {
         PostMetrics m = post.getMetrics();
-        if (m.getShares() != null && m.getReach() != null && m.getReach() > 0) {
-            return m.getShares() * 100.0 / m.getReach();
+        if (m.getShareCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0) {
+            return m.getShareCount() * 100.0 / m.getReachOrganicCount();
         }
         return null;
     }
     
     private Double postCommentRate(Post post) {
         PostMetrics m = post.getMetrics();
-        if (m.getComments() != null && m.getReach() != null && m.getReach() > 0) {
-            return m.getComments() * 100.0 / m.getReach();
+        if (m.getCommentCount() != null && m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0) {
+            return m.getCommentCount() * 100.0 / m.getReachOrganicCount();
         }
         return null;
     }
     
     private Double postLikeToCommentRatio(Post post) {
         PostMetrics m = post.getMetrics();
-        if (m.getComments() != null && m.getComments() > 0) {
-            return m.getLikes() * 1.0 / m.getComments();
+        if (m.getCommentCount() != null && m.getCommentCount() > 0) {
+            return m.getLikeCount() * 1.0 / m.getCommentCount();
         }
         return null;
     }
     
     private Double postReachEfficiency(Post post) {
         PostMetrics m = post.getMetrics();
-        if (m.getReach() != null && m.getImpressions() != null && m.getImpressions() > 0) {
-            return m.getReach() * 100.0 / m.getImpressions();
+        if (m.getReachOrganicCount() != null && m.getImpressionOrganicCount() != null && m.getImpressionOrganicCount() > 0) {
+            return m.getReachOrganicCount() * 100.0 / m.getImpressionOrganicCount();
         }
         return null;
     }
     
     private Double postEngagementRate(Post post) {
         PostMetrics m = post.getMetrics();
-        if (m.getReach() != null && m.getReach() > 0) {
-            int likes = m.getLikes() != null ? m.getLikes() : 0;
-            int comments = m.getComments() != null ? m.getComments() : 0;
-            int saves = m.getSaves() != null ? m.getSaves() : 0;
-            int shares = m.getShares() != null ? m.getShares() : 0;
-            return (likes + comments + saves + shares) * 100.0 / m.getReach();
+        if (m.getReachOrganicCount() != null && m.getReachOrganicCount() > 0) {
+            int likes = m.getLikeCount() != null ? m.getLikeCount() : 0;
+            int comments = m.getCommentCount() != null ? m.getCommentCount() : 0;
+            int saves = m.getSaveCount() != null ? m.getSaveCount() : 0;
+            int shares = m.getShareCount() != null ? m.getShareCount() : 0;
+            return (likes + comments + saves + shares) * 100.0 / m.getReachOrganicCount();
         }
         return null;
     }
@@ -554,20 +683,20 @@ public class AnalyticsService {
         List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creatorId);
         
         OptionalDouble thisWeekAvg = posts.stream()
-            .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat()))
             .filter(p -> !p.getPostedAt().toLocalDate().isBefore(weekStart))
             .map(Post::getMetrics)
-            .filter(m -> m.getPlays() != null && m.getImpressions() != null && m.getImpressions() > 0)
-            .mapToDouble(m -> m.getPlays() * 100.0 / m.getImpressions())
+            .filter(m -> m.getViewCount() != null && m.getImpressionOrganicCount() != null && m.getImpressionOrganicCount() > 0)
+            .mapToDouble(m -> m.getViewCount() * 100.0 / m.getImpressionOrganicCount())
             .average();
         
         OptionalDouble lastWeekAvg = posts.stream()
-            .filter(p -> "VIDEO".equalsIgnoreCase(p.getMediaType()))
+            .filter(p -> "VIDEO".equalsIgnoreCase(p.getFormat()))
             .filter(p -> !p.getPostedAt().toLocalDate().isBefore(prevWeekStart)
                 && p.getPostedAt().toLocalDate().isBefore(weekStart))
             .map(Post::getMetrics)
-            .filter(m -> m.getPlays() != null && m.getImpressions() != null && m.getImpressions() > 0)
-            .mapToDouble(m -> m.getPlays() * 100.0 / m.getImpressions())
+            .filter(m -> m.getViewCount() != null && m.getImpressionOrganicCount() != null && m.getImpressionOrganicCount() > 0)
+            .mapToDouble(m -> m.getViewCount() * 100.0 / m.getImpressionOrganicCount())
             .average();
         
         if (thisWeekAvg.isPresent() && lastWeekAvg.isPresent()) {

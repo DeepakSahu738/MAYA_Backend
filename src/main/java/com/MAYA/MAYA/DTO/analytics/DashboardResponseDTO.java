@@ -25,6 +25,17 @@ public class DashboardResponseDTO {
     private String niche;
     private LocalDateTime generatedAt;
 
+    // --- Platform this dashboard is for: INSTAGRAM | FACEBOOK | YOUTUBE | OTHER ---
+    private String platform;
+
+    // --- Platform-specific hero cards (generic, self-describing list) ---
+    // The frontend renders whatever cards are here without needing to know the
+    // platform. Adding a new platform = backend returns a different list.
+    private List<PlatformInsightCardDTO> platformInsights;
+
+    // --- Metrics this platform can't provide (drives UI hide + AI awareness) ---
+    private List<UnavailableMetricDTO> unavailableMetrics;
+
     // --- #16: Account Health Score ---
     private AccountHealthScoreDTO healthScore;
 
@@ -77,6 +88,39 @@ public class DashboardResponseDTO {
     private TimeSeriesMetricDTO profileConversion;
 
     // ======== Inner DTOs ========
+
+    /**
+     * A self-describing platform-specific metric card. The backend fills label,
+     * value, and unit; the frontend renders it generically without knowing which
+     * platform it belongs to. This keeps the response future-proof — a new
+     * platform just returns a different list of these cards.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PlatformInsightCardDTO {
+        private String key;          // stable id, e.g. "yt_approval_rate"
+        private String label;        // display name, e.g. "Approval Rate"
+        private Double value;        // the number (null if not computable)
+        private String unit;         // "%", "ratio", "hours", "count", "views/sub"
+        private Double delta;        // week-over-week change (null if n/a)
+        private String description;  // short human line for the card
+    }
+
+    /**
+     * A metric this platform does not support. Lets the UI hide/gray it and lets
+     * the AI explain the limitation instead of inventing a number.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UnavailableMetricDTO {
+        private String key;     // e.g. "sentiment_breakdown"
+        private String label;   // e.g. "Comment Sentiment"
+        private String reason;  // human explanation of why it's unavailable
+    }
 
     @Data
     @Builder

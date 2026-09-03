@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PostPerformanceDTO {
     private Long postId;
-    private String instagramId;
+    private String phylloId;
     private String caption;
     private String mediaType;
     private Double engagementRate;
