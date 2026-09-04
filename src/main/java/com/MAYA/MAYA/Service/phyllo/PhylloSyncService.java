@@ -40,6 +40,7 @@ public class PhylloSyncService {
     private final AnalyticsProcessingService analyticsProcessingService;
     private final TransactionTemplate transactionTemplate;
     private final EmailService emailService;
+    private final com.MAYA.MAYA.Repository.userRepository userRepository;
 
     // Timing constants
     private static final long INITIAL_DELAY_MS = 10_000;        // 10 seconds before first fetch
@@ -70,6 +71,12 @@ public class PhylloSyncService {
         // --- Sync Status: SYNCING (committed immediately, visible to frontend) ---
         updateSyncStatus(creatorId, "SYNCING", null);
 
+        // Tracks whether this sync took the slow (historic) path. Fast syncs finish
+        // within ~2 min while the user is still watching the frontend poll, so no
+        // email is needed. Only the slow historic path (5-min+ wait) emails, since
+        // the user has likely navigated away by then.
+        boolean wentLong = false;
+
         try {
             // Sync profile first (no delay needed for profile)
             syncProfile(phylloAccountId, creator);
@@ -83,6 +90,7 @@ public class PhylloSyncService {
 
             // If no posts returned — request historic data and wait 5 minutes
             if (phylloIdToPost.isEmpty()) {
+                wentLong = true; // historic path — this is the slow case
                 log.info("No recent posts found for account: {} — requesting historic data...", phylloAccountId);
                 boolean historicRequested = phylloService.requestHistoricData(phylloAccountId);
 
@@ -144,8 +152,11 @@ public class PhylloSyncService {
 
             log.info("Sync completed for creator: {} (@{})", creatorId, creator.getUsername());
 
-            // Send email notification
-            sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
+            // Only notify by email if the sync took the slow (historic) path.
+            // Fast syncs (~2 min) complete while the user is still on the page.
+            if (wentLong) {
+                sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
+            }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -189,7 +200,9 @@ public class PhylloSyncService {
                 });
 
                 analyticsProcessingService.processCreatorAnalytics(creator);
-                // No email for retry — user already received the initial sync email
+                // Retry is always the slow path (fires 30 min after connect), so the
+                // user is long gone — notify them their data is finally ready.
+                sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
             } else {
                 log.warn("Retry sync still found 0 posts for account: {} — giving up", phylloAccountId);
                 updateSyncStatus(creatorId, "COMPLETED", null); // Mark as done anyway
@@ -244,23 +257,34 @@ public class PhylloSyncService {
      */
     private void sendSyncCompleteEmail(Long creatorId, int postsCount) {
         try {
-            // Find the user email via social account link
+            // Find the social account link for this creator
             socialAccountRepository.findAll().stream()
                 .filter(a -> a.getCreator() != null && a.getCreator().getId().equals(creatorId))
                 .findFirst()
                 .ifPresent(account -> {
-                    // Look up user email from the user table via userId
-                    // For now, we'll use a simple approach — the creator's email or username
-                    Creator creator = account.getCreator();
                     String platform = account.getPlatform() != null ? account.getPlatform() : "social media";
                     String username = account.getPlatformUsername() != null ? account.getPlatformUsername() : "your account";
 
-                    // Find user email — check if creator has an email (set during profile sync sometimes)
-                    // If not available, skip email notification
-                    if (creator.getEmail() != null && !creator.getEmail().isEmpty()) {
-                        emailService.sendSyncCompleteEmail(creator.getEmail(), username, platform, postsCount);
+                    // Resolve the Maya user's email via the userId on the social account
+                    // link. This is the reliable source — the Creator's own email field
+                    // is rarely populated by Phyllo's profile sync.
+                    String toEmail = null;
+                    if (account.getUserId() != null) {
+                        toEmail = userRepository.findById(account.getUserId())
+                            .map(com.MAYA.MAYA.Entity.user::getEmail)
+                            .orElse(null);
+                    }
+                    // Fallback: creator email if the user lookup failed
+                    if ((toEmail == null || toEmail.isEmpty()) && account.getCreator().getEmail() != null) {
+                        toEmail = account.getCreator().getEmail();
+                    }
+
+                    if (toEmail != null && !toEmail.isEmpty()) {
+                        emailService.sendSyncCompleteEmail(toEmail, username, platform, postsCount);
+                        log.info("  → Sync complete email sent to {} for creator {}", toEmail, creatorId);
                     } else {
-                        log.info("  → No email available for creator {} — skipping notification", creatorId);
+                        log.info("  → No email available for creator {} (userId {}) — skipping notification",
+                            creatorId, account.getUserId());
                     }
                 });
         } catch (Exception e) {

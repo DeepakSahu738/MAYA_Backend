@@ -90,6 +90,9 @@ public class userController {
     private OtpService otpService;
 
     @Autowired
+    private com.MAYA.MAYA.Service.PasswordResetService passwordResetService;
+
+    @Autowired
     public userController(com.MAYA.MAYA.Service.genAi genAi, DemoLangChainServiceImpl langChainService, LangChainAiServiceInstagram langChainServiceNew) {
         this.genAi = genAi;
 
@@ -249,6 +252,64 @@ public class userController {
 
     record SendOtpRequest(String email, String name, String firstname, String lastname, String password) {}
     record VerifyOtpRequest(String email, String otp) {}
+
+    /**
+     * POST /auth/forgot-password
+     * Body: { "email": "..." }
+     * Emails a reset link if the account exists. Always responds the same way
+     * (never reveals whether the email is registered).
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        if (request.email() == null || !request.email().matches("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid email format"));
+        }
+
+        String result = passwordResetService.requestReset(request.email());
+
+        if ("RATE_LIMITED".equals(result)) {
+            return ResponseEntity.status(429)
+                .body(Map.of("error", "Too many reset requests. Please wait a few minutes."));
+        }
+        // Always "SENT" otherwise — don't leak whether the email exists
+        return ResponseEntity.ok(Map.of(
+            "status", "SENT",
+            "message", "If an account exists for that email, a reset link has been sent."
+        ));
+    }
+
+    /**
+     * POST /auth/reset-password
+     * Body: { "token": "...", "newPassword": "..." }
+     * Validates the reset token and updates the password.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        com.MAYA.MAYA.Service.PasswordResetService.ResetStatus status =
+            passwordResetService.resetPassword(request.token(), request.newPassword());
+
+        return switch (status) {
+            case SUCCESS -> ResponseEntity.ok(Map.of(
+                "status", "SUCCESS",
+                "message", "Password reset successfully. You can now log in."
+            ));
+            case WEAK_PASSWORD -> ResponseEntity.badRequest().body(Map.of(
+                "status", "WEAK_PASSWORD",
+                "error", "Password must be at least 6 characters."
+            ));
+            case EXPIRED -> ResponseEntity.status(410).body(Map.of(
+                "status", "EXPIRED",
+                "error", "This reset link has expired. Please request a new one."
+            ));
+            case INVALID_TOKEN -> ResponseEntity.badRequest().body(Map.of(
+                "status", "INVALID_TOKEN",
+                "error", "This reset link is invalid or has already been used."
+            ));
+        };
+    }
+
+    record ForgotPasswordRequest(String email) {}
+    record ResetPasswordRequest(String token, String newPassword) {}
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody loginUser loginUser) {
         try {
