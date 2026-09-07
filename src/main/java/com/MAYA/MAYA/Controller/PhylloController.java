@@ -74,18 +74,13 @@ public class PhylloController {
         log.info("Initiating Phyllo connect for Maya user: {}", request.userId());
 
         try {
-            // Check if we already have a Phyllo user for this Maya user
-            Optional<UserSocialAccount> existing = socialAccountRepository.findFirstByUserId(request.userId());
-            String phylloUserId;
-
-            if (existing.isPresent()) {
-                // Reuse existing Phyllo user ID
-                phylloUserId = existing.get().getPhylloUserId();
-                log.info("Reusing existing Phyllo user: {} for Maya user: {}", phylloUserId, request.userId());
-            } else {
-                // Create new Phyllo user
-                phylloUserId = phylloService.createPhylloUser(request.userId(), request.userName());
-            }
+            // Resolve the Phyllo user deterministically from the Maya userId.
+            // createPhylloUser sends external_id = mayaUserId and creates-or-fetches,
+            // so Maya user N ALWAYS maps to the Phyllo user whose external_id = N.
+            // We intentionally do NOT reuse a phylloUserId from a stored row — that
+            // is how two Maya users previously ended up sharing one Phyllo user.
+            String phylloUserId = phylloService.createPhylloUser(request.userId(), request.userName());
+            log.info("Resolved Phyllo user {} for Maya user {}", phylloUserId, request.userId());
 
             // Generate fresh SDK token
             String sdkToken = phylloService.generateSdkToken(phylloUserId);
@@ -157,9 +152,23 @@ public class PhylloController {
             }
 
             // Case 3: Account was DISCONNECTED by another user → allow new user to claim it
+            // Verify the account is now connected under THIS user's own Phyllo user
+            // before transferring ownership (never trust the client's phylloUserId).
+            JsonNode claimDetails = phylloService.getAccountDetails(request.accountId());
+            String myPhylloUserIdForClaim = phylloService.createPhylloUser(request.userId(), "Maya user " + request.userId());
+            String claimOwnerPhylloUserId = phylloService.extractAccountOwnerUserId(claimDetails);
+            if (claimOwnerPhylloUserId == null || !claimOwnerPhylloUserId.equals(myPhylloUserIdForClaim)) {
+                log.warn("Blocked account claim — Maya user {} (phyllo {}) tried to claim account {} owned by phyllo user {}",
+                    request.userId(), myPhylloUserIdForClaim, request.accountId(), claimOwnerPhylloUserId);
+                return ResponseEntity.status(403).body(Map.of(
+                    "error", "Account ownership mismatch",
+                    "message", "This account is not connected under your account. Connect it through your own Connect session first."
+                ));
+            }
+
             // Transfer ownership: update the existing record to the new user
             existingAccount.setUserId(request.userId());
-            existingAccount.setPhylloUserId(request.phylloUserId());
+            existingAccount.setPhylloUserId(myPhylloUserIdForClaim);
             existingAccount.setStatus("CONNECTED");
             existingAccount.setConnectedAt(LocalDateTime.now());
             if (existingAccount.getCreator() != null) {
@@ -183,6 +192,22 @@ public class PhylloController {
         String platform = extractPlatform(accountDetails);
         String username = extractUsername(accountDetails);
 
+        // --- OWNERSHIP VERIFICATION (prevents cross-user account linking) ---
+        // Resolve THIS Maya user's own Phyllo user id server-side (create-or-fetch
+        // by external_id = mayaUserId). Never trust request.phylloUserId().
+        String myPhylloUserId = phylloService.createPhylloUser(request.userId(), "Maya user " + request.userId());
+        // The account's owning Phyllo user comes straight from Phyllo's account object.
+        String accountOwnerPhylloUserId = phylloService.extractAccountOwnerUserId(accountDetails);
+
+        if (accountOwnerPhylloUserId == null || !accountOwnerPhylloUserId.equals(myPhylloUserId)) {
+            log.warn("Blocked cross-user account link — Maya user {} (phyllo {}) tried to link account {} owned by phyllo user {}",
+                request.userId(), myPhylloUserId, request.accountId(), accountOwnerPhylloUserId);
+            return ResponseEntity.status(403).body(Map.of(
+                "error", "Account ownership mismatch",
+                "message", "This account was not connected under your account. Please connect it through your own Connect session."
+            ));
+        }
+
         // Create a Creator entity for this connected account
         Creator creator = new Creator();
         creator.setPhylloAccountId(request.accountId());
@@ -194,11 +219,11 @@ public class PhylloController {
         creator.setIsActive(true);
         creator = creatorRepository.save(creator);
 
-        // Store the link
+        // Store the link — use the SERVER-resolved phylloUserId, not the client's
         UserSocialAccount socialAccount = UserSocialAccount.builder()
             .userId(request.userId())
             .creator(creator)
-            .phylloUserId(request.phylloUserId())
+            .phylloUserId(myPhylloUserId)
             .phylloAccountId(request.accountId())
             .platform(platform)
             .platformUsername(username)

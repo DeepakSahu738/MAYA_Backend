@@ -29,7 +29,7 @@ public class ScheduleTools {
     private final CreatorRepository creatorRepository;
     private final SnapshotAnalyticsService snapshotAnalyticsService;
 
-    @Tool("Suggest the best time slots to post this week based on historical engagement data")
+    @Tool("Recommend the best time slots to post this week based on historical engagement data. This suggests WHEN to post — it does not read or create calendar entries.")
     public String suggestSlots(@P("The creator's database ID") Long creatorId) {
         DayHourRecommendationDTO best = snapshotAnalyticsService.getBestDayHourToPost(creatorId);
 
@@ -50,7 +50,7 @@ public class ScheduleTools {
         return sb.toString();
     }
 
-    @Tool("Create a draft post on the content calendar with a caption and scheduled time")
+    @Tool("Create a NEW draft post on the content calendar. Use ONLY when the user explicitly asks to schedule or create a post — never for read/lookup questions about existing posts.")
     public String createDraft(
             @P("The creator's database ID") Long creatorId,
             @P("The post caption text") String caption,
@@ -82,10 +82,10 @@ public class ScheduleTools {
             post.getId(), truncate(caption, 60), scheduleTime);
     }
 
-    @Tool("List all scheduled/draft posts on the content calendar for a creator")
+    @Tool("List, view, or look up scheduled/draft/planned posts on the content calendar, including their captions, scheduled dates, status, and ID. Use this for ANY question about what is scheduled or planned, or to find a specific post by its date.")
     public String listScheduledPosts(@P("The creator's database ID") Long creatorId) {
         List<ScheduledPost> posts = scheduledPostRepository.findByCreatorIdOrderByScheduledForDesc(creatorId);
-        if (posts.isEmpty()) return "No scheduled posts found. Want me to suggest some time slots?";
+        if (posts.isEmpty()) return "No scheduled posts found on the calendar.";
 
         return posts.stream()
             .limit(10)
@@ -97,7 +97,7 @@ public class ScheduleTools {
             .collect(Collectors.joining("\n"));
     }
 
-    @Tool("Update a scheduled post's caption, hashtags, media type, or time")
+    @Tool("Update an EXISTING scheduled post's caption, hashtags, media type, or time. Use ONLY for explicit change/edit/reschedule requests, and only with a known post ID.")
     public String updateDraft(
             @P("The scheduled post ID to update") Long postId,
             @P("New caption (or null to keep current)") String caption,
@@ -123,7 +123,7 @@ public class ScheduleTools {
             post.getId(), truncate(post.getCaption(), 60), post.getScheduledFor(), post.getApprovalStatus());
     }
 
-    @Tool("Delete a scheduled post from the content calendar")
+    @Tool("Delete an EXISTING scheduled post from the content calendar. Use ONLY for explicit delete/remove requests, and only with a confirmed post ID.")
     public String deleteDraft(@P("The scheduled post ID to delete") Long postId) {
         ScheduledPost post = scheduledPostRepository.findById(postId).orElse(null);
         if (post == null) return "Post not found with ID: " + postId;

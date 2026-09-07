@@ -51,6 +51,7 @@ public class NightlySyncJob {
     private final CreatorAccessService creatorAccessService;
     private final AnalyticsProcessingService analyticsProcessingService;
     private final TransactionTemplate transactionTemplate;
+    private final DataFreshnessService dataFreshnessService;
 
     private static final int COMMENT_FETCH_LIMIT = 15;
     private static final long RATE_LIMIT_DELAY_MS = 200;
@@ -138,6 +139,10 @@ public class NightlySyncJob {
                 hashtagPerformanceRepository.deleteByCreatorId(creatorId);
                 // 5. DELETE + recompute top_commenters
                 topCommenterRepository.deleteByCreatorId(creatorId);
+
+                // 5b. Recompute data freshness — a creator who resumed posting
+                // flips HISTORIC → RECENT here (and latest/oldest post dates update).
+                dataFreshnessService.recompute(creatorId);
 
                 // 6. Update timestamps
                 creator.setLastSyncedAt(LocalDateTime.now());
