@@ -41,6 +41,7 @@ public class PhylloSyncService {
     private final TransactionTemplate transactionTemplate;
     private final EmailService emailService;
     private final com.MAYA.MAYA.Repository.userRepository userRepository;
+    private final DataFreshnessService dataFreshnessService;
 
     // Timing constants
     private static final long INITIAL_DELAY_MS = 10_000;        // 10 seconds before first fetch
@@ -293,51 +294,11 @@ public class PhylloSyncService {
     }
 
     /**
-     * Computes data freshness based on the latest and oldest post dates.
-     * RECENT = latest post within 90 days
-     * HISTORIC = has posts but all older than 90 days
-     * STALE = no posts at all
+     * Recomputes and persists data freshness. Delegates to the shared
+     * DataFreshnessService so first-connect and nightly sync share one impl.
      */
     private void computeDataFreshness(Creator creator) {
-        transactionTemplate.executeWithoutResult(status -> {
-            List<Post> posts = postRepository.findByCreatorIdOrderByPostedAtDesc(creator.getId());
-
-            Creator c = creatorRepository.findById(creator.getId()).orElse(null);
-            if (c == null) return;
-
-            if (posts.isEmpty()) {
-                c.setDataFreshness("STALE");
-                c.setLatestPostDate(null);
-                c.setOldestPostDate(null);
-                creatorRepository.save(c);
-                log.info("  → Data freshness: STALE (no posts)");
-                return;
-            }
-
-            LocalDateTime latestDate = posts.stream()
-                .map(Post::getPostedAt)
-                .filter(Objects::nonNull)
-                .max(LocalDateTime::compareTo)
-                .orElse(null);
-
-            LocalDateTime oldestDate = posts.stream()
-                .map(Post::getPostedAt)
-                .filter(Objects::nonNull)
-                .min(LocalDateTime::compareTo)
-                .orElse(null);
-
-            c.setLatestPostDate(latestDate);
-            c.setOldestPostDate(oldestDate);
-
-            if (latestDate != null && latestDate.isAfter(LocalDateTime.now().minusDays(90))) {
-                c.setDataFreshness("RECENT");
-                log.info("  → Data freshness: RECENT (latest post: {})", latestDate);
-            } else {
-                c.setDataFreshness("HISTORIC");
-                log.info("  → Data freshness: HISTORIC (latest post: {})", latestDate);
-            }
-            creatorRepository.save(c);
-        });
+        dataFreshnessService.recompute(creator.getId());
     }
 
     private void syncProfile(String accountId, Creator creator) {

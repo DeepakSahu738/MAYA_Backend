@@ -141,6 +141,20 @@ public class PhylloService {
     }
 
     /**
+     * Extracts the owning Phyllo user id from an account details JSON.
+     * The account object contains: "user": { "id": "...", "name": "..." }.
+     * Returns null if not present.
+     */
+    public String extractAccountOwnerUserId(JsonNode accountDetails) {
+        if (accountDetails == null) return null;
+        JsonNode user = accountDetails.get("user");
+        if (user != null && user.has("id") && !user.get("id").isNull()) {
+            return user.get("id").asText();
+        }
+        return null;
+    }
+
+    /**
      * Fetch account details from Phyllo after connection.
      *
      * @param accountId - the Phyllo account ID from the SDK callback

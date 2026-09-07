@@ -35,23 +35,34 @@ Non-negotiable rules:
 |-------|---------|-------------------|
 | users | Maya auth (email, password, role) | Standalone |
 | creators | One per social media account (Instagram/YouTube/etc) | Root of analytics data |
-| posts | Instagram posts with embedded PostMetrics | FK → creators |
+| posts | Content items with embedded PostMetrics (platform-agnostic) | FK → creators |
 | comments | Comments on posts (denormalized creator_id for speed) | FK → posts, creators |
 | hashtag_performance | Aggregated per creator+hashtag (upserted) | FK → creators |
 | top_commenters | Aggregated per creator+username (upserted) | FK → creators |
-| weekly_reports | Pre-computed weekly analytics snapshot (max 10 per creator) | FK → creators |
+| weekly_reports | Pre-computed weekly analytics snapshot (max 10 per creator) | FK → creators (+ top_post_id/worst_post_id → posts) |
 | scheduled_posts | Content calendar drafts | FK → creators |
 | user_social_accounts | Links Maya users ↔ Phyllo accounts ↔ creators | FK → users, creators |
 | weekly_goals | Weekly posting targets per user per creator | Unique: user_id + creator_id + week_start |
+| password_reset_tokens | Single-use hashed tokens for forgot-password flow | Standalone (email-keyed) |
+| otp_verifications | Pending registration OTPs (hashed) | Standalone (email-keyed) |
 | post_metrics_snapshots | Time-series (not populated yet) | FK → posts |
 | creator_insights_snapshots | Time-series (not populated yet) | FK → creators |
 
+### Platform-agnostic schema refactor (Phyllo-aligned vocabulary)
+The `posts`, `comments`, and `creators` schemas were migrated from Instagram-specific names to Phyllo's field vocabulary so one schema serves all platforms. `caption` is the one deliberate exception (kept as a Maya-domain concept; mapped from Phyllo `description`/`title`).
+
+- **Post** field renames: `instagram_id` → `phyllo_id`, `media_type` → `format`, `permalink` → `url`, `media_product_type` → `type`. New columns: `external_id`, `platform`, `title`, `duration`, `mentions`, `visibility`, `persistent_thumbnail_url`, `platform_profile_id`, `platform_profile_name`, `is_owned_by_platform_user`.
+- **Comment** field renames: `instagram_id` → `phyllo_id`. New columns: `external_id`, `commenter_id`, `commenter_profile_url`, `commenter_display_name`, `content_url`, `content_published_at`.
+- **Creator**: `instagram_id` → `phyllo_account_id`, new `platform` column.
+- **ScheduledPost**: `published_instagram_id` → `published_external_id`.
+
 ## Key Entity Details
 
-**PostMetrics (@Embeddable in posts table):**
-- likes, comments (always non-null)
-- saves, shares, reach, impressions, plays (NULLABLE — null means data not returned from Phyllo, NOT zero)
+**PostMetrics (@Embeddable in posts table — Phyllo-aligned field names):**
+- likeCount, commentCount (always non-null)
+- saveCount, shareCount, repostCount, dislikeCount, reachOrganicCount, impressionOrganicCount, viewCount (Long), watchTimeInHours, avgWatchTimeInSec, clickCount, replayCount (NULLABLE — null means data not returned, NOT zero)
 - engagementRate, saveRate, shareRate (computed on insert)
+- Note: `viewCount` moved from Post into PostMetrics; old `plays` field removed (use viewCount). Getter renames cascade everywhere: getLikes→getLikeCount, getComments→getCommentCount, getSaves→getSaveCount, getShares→getShareCount, getReach→getReachOrganicCount, getImpressions→getImpressionOrganicCount.
 
 **UserSocialAccount (the bridge):**
 - user_id → users.id (Maya auth)
@@ -93,6 +104,13 @@ Non-negotiable rules:
 - `GET /api/posts/activity?creatorId=X` — posting activity (streak dates, thisWeekCount, totalPosts)
 - `POST /api/content/**` — content generation (existing, deployed backend)
 
+### Auth — Registration & Password (public):
+- `POST /auth/send-otp` — start registration, email 6-digit OTP (rate limited: 3/10min)
+- `POST /auth/verify-otp` — verify OTP → create user → return JWT (auto-login)
+- `POST /auth/login` — email/password login → JWT
+- `POST /auth/forgot-password` — email a reset link if account exists (rate limited: 3/10min; always responds "SENT" — no email-existence leak)
+- `POST /auth/reset-password` — validate reset token + set new password (body: {token, newPassword})
+
 ### Access Control:
 - Demo creators (identified by username: fitlife_by_meera, techwithriya, the.monkey.who.left.hc.verma, travelwithkartik) → always public regardless of ID
 - Real creators (connected via Phyllo) → require JWT + ownership check via CreatorAccessService
@@ -109,7 +127,9 @@ Non-negotiable rules:
 
 **MayaAiService** (LangChain4j interface — no @AiService annotation, built manually in MayaAiConfig):
 - Streaming via TokenStream → SSE
-- System prompt includes: creatorId, currentDate, clarification-before-action rules
+- System prompt includes: creatorId, currentDate, **platformContext**, clarification-before-action rules
+- `chat(sessionId, userMessage, creatorId, currentDate, platformContext)` — platformContext is a short per-platform availability block built by `DashboardService.buildPlatformAiContext(creatorId)` and passed in by AgentChatController
+- Platform awareness: if a user asks for a metric UNAVAILABLE on their platform (e.g. sentiment on Facebook, reach on YouTube), the AI explains it isn't available and offers an alternative — never fabricates a number
 - @MemoryId sessionId for per-session isolation (frontend generates UUID)
 - Chat memory: last 20 messages per session (in-memory, not persistent)
 - System prompt rules: ask before destructive actions, never guess IDs, always verify with user
@@ -157,22 +177,25 @@ Both skip if data already exists (quick exit check)
 User connects via Phyllo SDK → POST /api/phyllo/account-connected
   → Creates Creator + UserSocialAccount link
   → PhylloSyncService.syncAccount() runs @Async:
-    → syncProfile() (GET /v1/profiles?account_id=X — reads reputation.follower_count)
+    → syncProfile() (GET /v1/profiles?account_id=X — reads reputation.follower_count, falls back to reputation.subscriber_count for YouTube/Twitch/LinkedIn)
     → syncPosts() (GET /v1/social/contents?account_id=X&limit=100)
-    → If empty → requestHistoricData (POST /v1/social/contents/fetch-historic) → retry up to 90sec
+    → If empty → requestHistoricData (POST /v1/social/contents/fetch-historic) → wait 5 min → retry → schedule 30-min retry if still empty (marks this the "slow path")
     → syncComments() per post (GET /v1/social/comments?account_id=X&content_id=Y — both required)
     → processCreatorAnalytics() → generates hashtag_performance + top_commenters + weekly_report
+    → Sync-complete email: sent ONLY on the slow (historic) path or the 30-min retry completion — fast syncs (~2 min, user still on page) send nothing. Recipient resolved via UserSocialAccount.userId → users.email (NOT creator.email, which Phyllo rarely populates).
 ```
 
 ### Nightly sync (NightlySyncJob — @Scheduled 3am, or Cloud Scheduler trigger for prod):
 ```
 For each CONNECTED non-demo account:
   → syncProfile (1 API call)
-  → syncPostsWithMetricUpdate (1 API call — INSERT new + UPDATE existing metrics)
+  → clearPostReferencesByCreatorId (nulls weekly_reports.top_post_id/worst_post_id BEFORE deleting posts — prevents FK constraint violation)
+  → DELETE old posts + comments → batch INSERT fresh
   → syncRecentComments (last 15 posts, 15 API calls)
   → processCreatorAnalytics() (hashtags + commenters + weekly report)
   → 200ms delay between API calls (Phyllo rate limit: 10 req/sec)
   → Error isolation per user (one failure doesn't stop others)
+  → NOTE: this delete-then-reinsert flow must clear weekly_reports FK refs first (top_post_id/worst_post_id). Same guard applied in DataSeedService re-seed path.
 ```
 
 ### Weekly report lifecycle:
@@ -206,14 +229,17 @@ For each CONNECTED non-demo account:
 - POST /v1/social/contents/fetch-historic — request data older than 90 days (body: {account_id, from_date})
 - GET /v1/social/comments?account_id=X&content_id=Y&limit=100 — comments (BOTH account_id AND content_id required)
 
-**Key Phyllo field mappings:**
-- post.title → caption
-- post.format → mediaType (IMAGE/VIDEO)
-- post.type → mediaProductType (FEED/REELS)
-- post.hashtags[] → comma-separated string
-- engagement.reach_organic_count → reach (79% available, nullable)
-- engagement.save_count → saves (63% available, nullable)
-- profile: reputation.follower_count, reputation.following_count, reputation.content_count
+**Key Phyllo field mappings (post-refactor — entity names now mirror Phyllo):**
+- post.description (fallback post.title) → caption; post.title → title
+- post.external_id → externalId; creator.platform → post.platform
+- post.format → format (IMAGE/VIDEO/AUDIO/TEXT); post.type → type (FEED/REELS/etc)
+- post.url → url; post.hashtags[] → comma-separated string; post.mentions[] → comma-separated string
+- engagement.like_count → likeCount, comment_count → commentCount
+- engagement.reach_organic_count → reachOrganicCount (nullable), impression_organic_count → impressionOrganicCount
+- engagement.save_count → saveCount, share_count → shareCount, repost_count → repostCount, dislike_count → dislikeCount
+- engagement.view_count → viewCount (Long), watch_time_in_hours → watchTimeInHours, avg_watch_time_in_sec → avgWatchTimeInSec, click_count → clickCount
+- comment.external_id/commenter_id/commenter_profile_url/commenter_display_name + content.url/published_at
+- profile: reputation.follower_count (fallback reputation.subscriber_count) → followerCount, following_count, content_count
 
 ## Security Config (WebSecurityConfig)
 
@@ -233,6 +259,30 @@ One Maya user can connect multiple social accounts:
 - One social account can only be actively connected to ONE Maya user
 - /api/phyllo/accounts returns full profile data (followers, picture, niche, verified status)
 
+## Platform-Aware Analytics (Instagram / Facebook / YouTube)
+
+Analytics are a HYBRID: a shared core (reused math) + a per-platform hero block. Focus platforms are Instagram, Facebook, YouTube; everything else falls back to Instagram-default behavior. Data availability drives everything (from Phyllo's engagement schema).
+
+**`Platform` enum** (`com.MAYA.MAYA.Enums.Platform`): INSTAGRAM, FACEBOOK, YOUTUBE, OTHER + `normalize(String)` maps raw Phyllo/creator platform strings (case-insensitive, handles IG Direct/Lite, Facebook Commerce, etc.) to canonical values. Unknown → OTHER.
+
+**Same DTO, different fills.** The dashboard response shape is unchanged; only *which* numbers fill and *how* they're computed varies:
+- Engagement denominator per platform: Instagram/Facebook = reach; YouTube = views (no reach exists on YT).
+- `DashboardResponseDTO` gained 3 additive fields: `platform` (String), `platformInsights` (List<PlatformInsightCardDTO>), `unavailableMetrics` (List<UnavailableMetricDTO>).
+  - `PlatformInsightCardDTO { key, label, value (nullable), unit, delta (always null for now), description }` — a generic, self-describing card list; frontend renders it blindly. Adding a new platform = backend returns a different list, no DTO/frontend change.
+  - `UnavailableMetricDTO { key, label, reason }` — what the platform can't provide; drives UI hide + feeds the AI system message. `key` matches `rateCards[].metricName` exactly for cross-referencing.
+
+**Platform hero cards (in platformInsights):**
+- Instagram → empty (its hero metrics — save rate, share rate, reach efficiency, play-through — already live in core `rateCards`)
+- Facebook → `fb_reach_efficiency` (reach/impressions), `fb_watch_time` (hours), `fb_view_rate` (views/reach), `fb_click_signal` (clicks)
+- YouTube → `yt_view_engagement` ((likes+comments)/views), `yt_like_to_view`, `yt_approval_rate` (likes/(likes+dislikes) — YT-only), `yt_views_per_sub`
+
+**Core sections nulled per platform:** Facebook has no comment bodies via Phyllo, so `sentimentBreakdown`, `questionsVsStatements`, `questionsInsight`, `mostLikedComments`, `topCommenters`, `commonWords` come back null for Facebook. YouTube keeps all comment sections (it has comments). `rateCards` is NOT filtered — unsupported metrics return `currentValue: null` and their keys appear in `unavailableMetrics`.
+
+**Platform-aware health score** (`AccountHealthService`): weights are chosen per platform and re-normalized to 100% so a platform is never penalized for a component it can't provide. `componentScores` map only contains keys relevant to the platform (frontend must iterate keys, not assume all 5):
+- Instagram/Other: engagement .30, consistency .20, reach_distribution .20, sentiment .15, content_value .15
+- Facebook: engagement .40, consistency .25, reach_distribution .35 (no sentiment/saves)
+- YouTube: engagement .55, consistency .30, sentiment .15 (no reach/saves)
+
 ## Environment Variables (for Cloud Run deployment)
 
 ```
@@ -243,19 +293,26 @@ PHYLLO_BASE_URL=https://api.staging.getphyllo.com
 PHYLLO_CLIENT_ID=024587e1-c1df-4493-b195-ef75eee887c8
 PHYLLO_CLIENT_SECRET=8e05c8bf-6aae-4885-ac5b-eaee4164da99
 PHYLLO_ENVIRONMENT=staging
+FRONTEND_BASE_URL=https://mayamanage.com   # used to build password reset links (defaults to this if unset)
 ```
 
+## What's Built (recent additions)
+- OTP-based registration + email verification (send-otp / verify-otp)
+- Forgot password / reset password flow (token-based reset link — /auth/forgot-password + /auth/reset-password, 30-min single-use hashed tokens)
+- Platform-aware analytics + health score for Instagram/Facebook/YouTube
+- Platform-agnostic Phyllo-aligned entity schema
+
 ## What's NOT Built Yet
-- OTP-based registration + email verification
-- Forgot password / reset password flow
 - Cross-platform content repurposer (turn 1 post into IG/YT/TikTok variants)
-- Cloud Scheduler HTTP trigger endpoint (for nightly sync on Cloud Run cold start)
+- Cloud Scheduler HTTP trigger endpoint (for nightly sync on Cloud Run cold start) — currently use a public GET (e.g. /api/analytics/creators) only to wake the instance
 - Post publishing via Phyllo Publish API
 - Persistent chat history (DB-stored)
 - Proactive AI (auto-suggestions, alerts, weekly briefs)
 - Payment/subscription system
 - Account lockout (brute force protection on login)
 - Input validation on chat message length
+- Own social-connection SDK (planned Phyllo replacement — same DB, swap the 4 Phyllo-coupled files: PhylloService, PhylloSyncService, NightlySyncJob, PhylloController)
+- Queue/worker or webhook-based sync (current sync uses blocking @Async threads with sleeps — fragile on Cloud Run scale-down; deferred to SDK migration)
 
 ## File Structure (key files)
 
@@ -272,7 +329,7 @@ src/main/java/com/MAYA/MAYA/
 │   ├── PhylloController.java       — connect/disconnect/reconnect/delete/sync-status
 │   ├── WeeklyGoalController.java   — get/set weekly posting goals
 │   ├── PostActivityController.java — streak + activity data from real posts
-│   └── userController.java         — auth (login/register)
+│   └── userController.java         — auth: login, OTP register (send-otp/verify-otp), forgot/reset password (@RequestMapping /auth)
 ├── Service/
 │   ├── ai/
 │   │   ├── MayaAiService.java      — LangChain4j interface (orchestrator)
@@ -282,35 +339,43 @@ src/main/java/com/MAYA/MAYA/
 │   │   ├── TrendTools.java         — @Tool methods for trends/gaps
 │   │   └── StrategyTools.java      — @Tool method for weekly plan generation
 │   ├── analytics/
-│   │   ├── AnalyticsService.java   — 16 time-series metrics (pure Java)
+│   │   ├── AnalyticsService.java   — time-series metrics (pure Java) + platform-specific FB/YT hero metric methods (view engagement, like-to-view, approval rate, views/sub, reach efficiency, watch time, view rate, clicks)
 │   │   ├── SnapshotAnalyticsService.java — 8 snapshot metrics
-│   │   ├── AccountHealthService.java — composite health score 0-100
-│   │   ├── DashboardService.java   — assembles full 24-metric response
+│   │   ├── AccountHealthService.java — platform-aware composite health score 0-100 (per-platform weights, re-normalized)
+│   │   ├── DashboardService.java   — assembles full response + platformInsights + unavailableMetrics + buildPlatformAiContext() for the chat system message
 │   │   └── AnalyticsProcessingService.java — computes & stores derived tables + enforces 10-report limit
 │   ├── strategy/
 │   │   └── WeeklyStrategyService.java — THE HERO: analyzes posts → builds LLM prompt → generates 7-day plan
-│   ├── phyllo/
+│   ├── phyllo/  (the ONLY Phyllo-coupled package — swap target for own SDK)
 │   │   ├── PhylloService.java      — Phyllo API communication (handles user_exists, historic fetch)
-│   │   ├── PhylloSyncService.java  — maps Phyllo JSON → Maya entities + triggers analytics processing
-│   │   └── NightlySyncJob.java     — @Scheduled nightly data refresh + metric updates
+│   │   ├── PhylloSyncService.java  — maps Phyllo JSON → Maya entities, sets platform, slow-path email, subscriber_count fallback, triggers analytics
+│   │   └── NightlySyncJob.java     — @Scheduled nightly refresh; clears weekly_reports post-FK refs before delete
 │   ├── instagram/
 │   │   ├── DataSeedService.java    — seeds 4 demo creators on startup (skips if exists)
 │   │   └── DummyGraphApiService.java — loads demo JSON files
 │   ├── CreatorAccessService.java   — demo vs real access control (by username, not ID)
+│   ├── OtpService.java             — registration OTP generate/verify (hashed, rate limited)
+│   ├── PasswordResetService.java   — forgot-password: token generate/email + reset (hashed, single-use)
+│   ├── EmailService.java           — OTP, sync-complete, and password-reset emails (ZeptoMail SMTP)
 │   └── RateLimiterService.java     — in-memory rate limiter (per session/creator)
+├── Enums/
+│   └── Platform.java              — canonical platform values + normalize() (used by sync + analytics)
 ├── Entity/
 │   ├── user.java, Role.java       — Maya auth
 │   ├── UserSocialAccount.java     — linking table
 │   ├── WeeklyGoal.java            — weekly posting targets
+│   ├── OtpVerification.java       — pending registration OTPs (hashed)
+│   ├── PasswordResetToken.java    — single-use hashed reset tokens (forgot-password)
 │   └── instagram/
-│       ├── Creator.java, Post.java, PostMetrics.java, Comment.java
+│       ├── Creator.java, Post.java, PostMetrics.java, Comment.java (Phyllo-aligned field names)
 │       ├── HashtagPerformance.java, TopCommenter.java, WeeklyReport.java
 │       └── ScheduledPost.java
 ├── Repository/
 │   ├── userRepository.java, UserSocialAccountRepository.java, WeeklyGoalRepository.java
+│   ├── OtpVerificationRepository.java, PasswordResetTokenRepository.java
 │   └── instagram/ (all JPA repos — each has deleteByCreatorId for hard-delete)
 ├── DTO/
-│   ├── analytics/ (DashboardResponseDTO with inner classes, all metric DTOs)
+│   ├── analytics/ (DashboardResponseDTO with platform/platformInsights/unavailableMetrics + inner classes, all metric DTOs)
 │   └── strategy/ (WeeklyPlanDTO with DayPlanDTO)
 ├── Security/ (WebSecurityConfig, jwtTokenProvider, CustomUserDetailsService)
 └── Exception/ (CreatorNotFoundException, GlobalExceptionHandler, ApiErrorResponse)
