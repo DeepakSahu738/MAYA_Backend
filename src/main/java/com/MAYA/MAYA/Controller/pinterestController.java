@@ -31,7 +31,8 @@ public class pinterestController {
         ResponsePOJOPCombinedPOJO combinedPOJO = new ResponsePOJOPCombinedPOJO();
         try {
             ResponsePOJOPPinIdeaWRAPPER generatePinIdeas = langChainAiServicePinterest.generatePinIdeas(request.getPinGoal(),request.getContentType(),request.getPinType(),request.getTargetAudience());
-            ResponsePOJOPTitleAndDescriptionWRAPPER generateOptimizedTitleAndDescription = langChainAiServicePinterest.generateOptimizedTitleAndDescription(request.getSearchKeywords(),request.getCallToAction());
+            String pinKeywordsJoined = request.getSearchKeywords() != null ? String.join(", ", request.getSearchKeywords()) : "";
+            ResponsePOJOPTitleAndDescriptionWRAPPER generateOptimizedTitleAndDescription = langChainAiServicePinterest.generateOptimizedTitleAndDescription(pinKeywordsJoined,request.getCallToAction());
             ResponsePOJOPHashtagWRAPPER suggestHashtag = langChainAiServicePinterest.suggestHashtag(request.getNiche(),request.getPinGoal());
             ResponsePOJOPAestheticAndDesignWRAPPER suggestAestheticAndDesignTips = langChainAiServicePinterest.suggestAestheticAndDesignTips(request.getToneAndStyle(),request.getPinType());
             ResponsePOJOPEngagementWRAPPER generateEngagement = langChainAiServicePinterest.generateEngagement(request.getNiche(),request.getCallToAction());

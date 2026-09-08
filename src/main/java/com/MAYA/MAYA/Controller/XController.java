@@ -38,7 +38,8 @@ public class XController {
     private ResponseEntity<Map<String, String>> generateOptimizedTweetCopy(@RequestBody TwitterPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String generateOptimizedTweetCopy = langChainAiServiceX.generateOptimizedTweetCopy(request.getToneAndStyle(),request.getHashtagsAndMentions(),request.getCallToAction(),request.getTargetAudience());
+            String xMentionsJoined1 = request.getHashtagsAndMentions() != null ? String.join(", ", request.getHashtagsAndMentions()) : "";
+            String generateOptimizedTweetCopy = langChainAiServiceX.generateOptimizedTweetCopy(request.getToneAndStyle(),xMentionsJoined1,request.getCallToAction(),request.getTargetAudience());
             Map<String, String> response = new HashMap<>();
             response.put("OptimizedTweetCopy", generateOptimizedTweetCopy);
             return  new ResponseEntity<>(response, HttpStatus.OK);
@@ -53,7 +54,8 @@ public class XController {
     private ResponseEntity<Map<String, String>> suggestHashtag(@RequestBody TwitterPostDTO request) {
         //we are doing the LangChain stuff in the service section
         try {
-            String suggestHashtag = langChainAiServiceX.suggestHashtag(request.getHashtagsAndMentions(),request.getNiche(),request.getContentType());
+            String xMentionsJoined2 = request.getHashtagsAndMentions() != null ? String.join(", ", request.getHashtagsAndMentions()) : "";
+            String suggestHashtag = langChainAiServiceX.suggestHashtag(xMentionsJoined2,request.getNiche(),request.getContentType());
             Map<String, String> response = new HashMap<>();
             response.put("Hashtag", suggestHashtag);
             return  new ResponseEntity<>(response, HttpStatus.OK);

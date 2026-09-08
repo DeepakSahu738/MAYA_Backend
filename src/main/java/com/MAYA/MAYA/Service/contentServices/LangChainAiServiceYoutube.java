@@ -26,13 +26,13 @@ public interface LangChainAiServiceYoutube {
 
     @UserMessage("Generate 3 compelling video titles using {{keywordsAndSeoTags}} for high-ranking search results.Create 2 detailed video descriptions, including keyword-rich first sentences to increase click-through rates.Ensure descriptions naturally incorporate {{callToAction}} for audience engagement.")
     ResponsePOJOYTSEOWRAPPER generateSEO(
-            @V("keywordsAndSeoTags") List<String> keywordsAndSeoTags,
+            @V("keywordsAndSeoTags") String keywordsAndSeoTags,
             @V("callToAction") String callToAction
     );
 
     @UserMessage("Generate 10 relevant hashtags that align with {{keywordsAndSeoTags}}, ensuring a mix of high-volume and niche-specific tags.Suggest video tags that match {{keywordsAndSeoTags}} to improve discoverability under related videos.Optimize hashtags for {{niche}} and {{trendingOrEvergreen}} content to increase reach across search, suggested, and trending sections.Ensure the hashtags naturally complement the video title & description, reinforcing searchability.")
     ResponsePOJOYTHashtagWRAPPER suggestHashtag(
-            @V("keywordsAndSeoTags") List<String> keywordsAndSeoTags,
+            @V("keywordsAndSeoTags") String keywordsAndSeoTags,
             @V("niche") String niche,
             @V("trendingOrEvergreen") String trendingOrEvergreen
     );

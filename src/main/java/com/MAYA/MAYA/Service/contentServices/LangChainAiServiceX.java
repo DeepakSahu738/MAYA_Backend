@@ -21,14 +21,14 @@ public interface LangChainAiServiceX {
     @UserMessage("Craft scroll-stopping tweet copy that matches {{toneStyle}}, ensuring it captures attention instantly. Incorporate {{hashtagsAndMentions}} naturally to enhance visibility while keeping the text concise & engaging.Conclude with a strong {{callToAction}}, prompting {{targetAudience}} to interact (e.g., Retweet if you agree, Reply with your thoughts,Follow for more insights).")
     String generateOptimizedTweetCopy(
             @V("toneStyle") String toneStyle,
-            @V("hashtagsAndMentions") List<String> hashtagsAndMentions,
+            @V("hashtagsAndMentions") String hashtagsAndMentions,
             @V("callToAction") String callToAction,
             @V("targetAudience") String targetAudience
     );
 
     @UserMessage("Select 10 high-impact hashtags based on {{hashtagsAndMentions}}, ensuring a mix of trending, niche-specific, and evergreen tags.Identify relevant accounts to tag (influencers, brands, thought leaders) to amplify reach & encourage engagement.Recommend trending hashtags & topics that align with {{niche}} and {{trendingOrEvergreen}}, optimizing for maximum visibility on the platform.")
     String suggestHashtag(
-            @V("hashtagsAndMentions") List<String> hashtagsAndMentions,
+            @V("hashtagsAndMentions") String hashtagsAndMentions,
             @V("niche") String niche,
             @V("trendingOrEvergreen") String trendingOrEvergreen
     );

@@ -33,7 +33,8 @@ public class facebookController {
         try {
             ResponsePOJOFBPostIdeaWRAPPER generatePostIdeas = langChainAiServiceFacebook.generatePostIdeas(request.getPostGoal(),request.getNiche());
             ResponsePOJOFBheadlinesAndDesWRAPPER generateHeadlinesAndDes = langChainAiServiceFacebook.generateHeadlinesAndDes(request.getPostType(),request.getToneAndStyle(),request.getTargetAudience());
-            ResponsePOJOFBhashtagsWRAPPER suggestHashtags = langChainAiServiceFacebook.suggestHashtags(request.getTopicsAndKeywords());
+            String fbTopicsJoined = request.getTopicsAndKeywords() != null ? String.join(", ", request.getTopicsAndKeywords()) : "";
+            ResponsePOJOFBhashtagsWRAPPER suggestHashtags = langChainAiServiceFacebook.suggestHashtags(fbTopicsJoined);
             ResponsePOJOFBengagementFeatureWRAPPER suggestEngagementFeatures = langChainAiServiceFacebook.suggestEngagementFeatures(request.getPostType());
             ResponsePOJOFBadAndBoostingWRAPPER generateBoostingTips = langChainAiServiceFacebook.generateBoostingTips();
             ResponsePOJOFBPostingTimeWRAPPER suggestBestPostTime = langChainAiServiceFacebook.suggestBestPostTime(request.getTargetAudience());

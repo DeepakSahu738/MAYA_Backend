@@ -34,8 +34,9 @@ public class snapchatController {
         ResponsePOJOSCConbinedPOJO conbinedPOJO =new ResponsePOJOSCConbinedPOJO();
         try {
             ResponsePOJOSCStoryIdeaWRAPPER generateStoryIdeas = langChainAiServiceSnapchat.generateStoryIdeas(request.getSnapGoal(),request.getNiche(),request.getStoryType(),request.getTargetAudience(),request.getToneAndStyle(),request.getCallToAction(),request.getContentType());
-            ResponsePOJOSCTextOverlaysWRAPPER generateTextOverlays = langChainAiServiceSnapchat.generateTextOverlays(request.getStoryType(),request.getToneAndStyle(),request.getNiche(),request.getCallToAction(),request.getStickersAndFilters(),request.getTargetAudience());
-            ResponsePOJOSClensesAndFiltersWRAPPER suggestTrendingLensesAndFilters = langChainAiServiceSnapchat.suggestTrendingLensesAndFilters(request.getNiche(),request.getContentType(),request.getStoryType(),request.getTargetAudience(),request.getStickersAndFilters());
+            String scStickersJoined = request.getStickersAndFilters() != null ? String.join(", ", request.getStickersAndFilters()) : "";
+            ResponsePOJOSCTextOverlaysWRAPPER generateTextOverlays = langChainAiServiceSnapchat.generateTextOverlays(request.getStoryType(),request.getToneAndStyle(),request.getNiche(),request.getCallToAction(),scStickersJoined,request.getTargetAudience());
+            ResponsePOJOSClensesAndFiltersWRAPPER suggestTrendingLensesAndFilters = langChainAiServiceSnapchat.suggestTrendingLensesAndFilters(request.getNiche(),request.getContentType(),request.getStoryType(),request.getTargetAudience(),scStickersJoined);
             ResponsePOJOSCEngagementFeaturesWRAPPER suggestEngagementFeatures = langChainAiServiceSnapchat.suggestEngagementFeatures(request.getToneAndStyle(),request.getStoryType(),request.getNiche());
             ResponsePOJOSCBoostingTipsWRAPPER generateBoostingTips = langChainAiServiceSnapchat.generateBoostingTips(request.getSnapGoal(),request.getNiche());
             ResponsePOJOSCPOstingTimeWRAPPER suggestBestPostTime = langChainAiServiceSnapchat.suggestBestPostTime(request.getTargetAudience(),request.getStoryType());

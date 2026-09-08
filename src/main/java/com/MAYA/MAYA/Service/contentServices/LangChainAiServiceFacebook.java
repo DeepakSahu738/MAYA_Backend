@@ -31,7 +31,7 @@ public interface LangChainAiServiceFacebook {
 
     @UserMessage("Provide trending, niche-specific hashtags related to {{topicsAndKeywords}}. Suggest high-engagement pages, influencers, or groups to tag.")
     ResponsePOJOFBhashtagsWRAPPER suggestHashtags(
-            @V("topicsAndKeywords") List<String> topicsAndKeywords
+            @V("topicsAndKeywords") String topicsAndKeywords
     );
 
     @UserMessage("Recommend engagement-driving elements (polls, quizzes, challenges) suited for {{postType}} to boost interaction rate.")

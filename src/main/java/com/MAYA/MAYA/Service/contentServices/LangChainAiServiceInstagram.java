@@ -41,7 +41,7 @@ import java.util.List;
    @UserMessage("Generate 30 relevant hashtags for the {{niche}} niche using these keywords: {{keywords}}. The hashtags should be {{trendingOrEvergreen}} and optimized for visibility. Generate 30")
    ResponsePOJOInstaHashtagsWRAPPER generateHashtags(
            @V("niche") String niche,
-           @V("keywords") List<String> keywords,
+           @V("keywords") String keywords,
            @V("trendingOrEvergreen") String trendingOrEvergreen
    );
 
