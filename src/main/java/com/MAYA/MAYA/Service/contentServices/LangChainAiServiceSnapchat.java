@@ -32,7 +32,7 @@ public interface LangChainAiServiceSnapchat {
             @V("toneStyle") String toneStyle,
             @V("niche") String niche,
             @V("callToAction") String callToAction,
-            @V("stickersAndFilters") List<String> stickersAndFilters,
+            @V("stickersAndFilters") String stickersAndFilters,
             @V("targetAudience") String targetAudience
     );
 
@@ -42,7 +42,7 @@ public interface LangChainAiServiceSnapchat {
             @V("trendingOrEvergreen") String trendingOrEvergreen,
             @V("storyType") String storyType,
             @V("targetAudience") String targetAudience,
-            @V("stickersAndFilters") List<String> stickersAndFilters
+            @V("stickersAndFilters") String stickersAndFilters
     );
 
     @UserMessage("Recommend Snap-native engagement tools that fit {{toneStyle}}, {{storyType}}, and {{niche}}.Include polls, quizzes, countdown timers, and reply stickers that encourage audience participation.Example: If {{storyType}} is Behind-the-Scenes, suggest a Swipe Up for BTS challenge.")

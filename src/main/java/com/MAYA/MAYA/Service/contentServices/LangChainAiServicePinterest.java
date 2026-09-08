@@ -24,7 +24,7 @@ public interface LangChainAiServicePinterest {
 
     @UserMessage("Craft catchy, keyword-rich titles that align with {{searchKeywords}}, ensuring Pinterest SEO optimization for better reach. Write concise, compelling descriptions that provide context while naturally integrating {{searchKeywords}}.Structure descriptions to encourage engagement, incorporating action words and a strong {{callToAction}}.")
     ResponsePOJOPTitleAndDescriptionWRAPPER generateOptimizedTitleAndDescription(
-            @V("searchKeywords") List<String> searchKeywords,
+            @V("searchKeywords") String searchKeywords,
             @V("callToAction") String callToAction
     );
 

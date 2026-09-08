@@ -33,8 +33,9 @@ public class youtubeController {
         ResponsePOJOYTCombinedPOJO combinedPOJO = new ResponsePOJOYTCombinedPOJO();
         try {
             ResponsePOJOYTVideoIdeaWRAPPER generateVideoIdeas = langChainAiServiceYoutube.generateVideoIdeas(request.getVideoGoal(),request.getNiche(),request.getVideoType(),request.getTargetAudience(),request.getContentType());
-            ResponsePOJOYTSEOWRAPPER generateSEO = langChainAiServiceYoutube.generateSEO(request.getKeywordsAndSeoTags(),request.getCallToAction());
-            ResponsePOJOYTHashtagWRAPPER suggestHashtag = langChainAiServiceYoutube.suggestHashtag(request.getKeywordsAndSeoTags(),request.getNiche(),request.getContentType());
+            String ytKeywordsJoined = request.getKeywordsAndSeoTags() != null ? String.join(", ", request.getKeywordsAndSeoTags()) : "";
+            ResponsePOJOYTSEOWRAPPER generateSEO = langChainAiServiceYoutube.generateSEO(ytKeywordsJoined,request.getCallToAction());
+            ResponsePOJOYTHashtagWRAPPER suggestHashtag = langChainAiServiceYoutube.suggestHashtag(ytKeywordsJoined,request.getNiche(),request.getContentType());
             ResponsePOJOYTThumbnailAndBrandingWRAPPER suggestThumbnailAndBranding = langChainAiServiceYoutube.suggestThumbnailAndBranding(request.getToneAndStyle(),request.getNiche(),request.getVideoGoal());
             ResponsePOJOYTEngagementWRAPPER generateEngagement = langChainAiServiceYoutube.generateEngagement(request.getTargetAudience(), request.getNiche());
             ResponsePOJOYTPostingTimeWRAPPER suggestBestPostTime = langChainAiServiceYoutube.suggestBestPostTime(request.getTargetAudience());

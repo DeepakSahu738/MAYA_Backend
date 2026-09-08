@@ -64,7 +64,8 @@ public class instaGramController {
 
             ResponsePOJOInstaCaptionWRAPPER generateCaptionWithCTA = langChainService.generateCaption(request.getNiche()
                     , request.getToneStyle(), request.getCallToAction());
-            ResponsePOJOInstaHashtagsWRAPPER generatedHashtags1 = langChainService.generateHashtags(request.getNiche(), request.getKeywords(),
+            String keywordsJoined = request.getKeywords() != null ? String.join(", ", request.getKeywords()) : "";
+            ResponsePOJOInstaHashtagsWRAPPER generatedHashtags1 = langChainService.generateHashtags(request.getNiche(), keywordsJoined,
                     request.getTrendingOrEvergreen());
             ResponsePOJOInstaDesignAndAestheticWRAPPER generateDesignAestheticSugestion = langChainService.generateDesignAndAesthetic(request.getNiche(),
                     request.getToneStyle(), request.getContentType());
@@ -266,9 +267,10 @@ public class instaGramController {
                 );
 
                 // Step 3: Generate Hashtags based on inputs
+            String keywordsJoinedChain = request.getKeywords() != null ? String.join(", ", request.getKeywords()) : "";
             ResponsePOJOInstaHashtagsWRAPPER hashtags = langChainService.generateHashtags(
                         request.getNiche(),
-                        request.getKeywords(),
+                        keywordsJoinedChain,
                         request.getTrendingOrEvergreen()
                 );
                 // Step 4 generate Design And Aesthetic
