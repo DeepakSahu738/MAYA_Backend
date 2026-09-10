@@ -33,9 +33,12 @@ public class ScheduledPost {
     @JoinColumn(name = "creator_id", nullable = false)
     private Creator creator;
 
-    // POST (default) or TASK — discriminates the two board item kinds
+    // POST (default) or TASK — discriminates the two board item kinds.
+    // NOT marked nullable=false at the DB level: ddl-auto=update added this column
+    // to a table that already had rows, so pre-existing rows have NULL here. We
+    // treat NULL as POST on read (see getItemType) rather than fail the query.
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false)
+    @Column(name = "item_type")
     private ItemType itemType = ItemType.POST;
     
     @Column(columnDefinition = "TEXT", nullable = false)
@@ -75,6 +78,12 @@ public class ScheduledPost {
     
     private LocalDateTime updatedAt = LocalDateTime.now();
     
+    // Null-safe getter: pre-existing rows (added before item_type existed) have
+    // NULL — treat them as POST. Overrides Lombok's generated getter.
+    public ItemType getItemType() {
+        return itemType != null ? itemType : ItemType.POST;
+    }
+
     public enum ItemType {
         POST,
         TASK
