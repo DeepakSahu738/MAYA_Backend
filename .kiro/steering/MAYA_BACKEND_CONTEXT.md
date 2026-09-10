@@ -82,11 +82,12 @@ The `posts`, `comments`, and `creators` schemas were migrated from Instagram-spe
 - `GET /api/analytics/dashboard/{creatorId}` — full 24-metric dashboard (computed on-demand)
 - `GET /api/analytics/weekly-reports/{creatorId}` — historical reports (max 10)
 - `POST /api/chat/stream` — AI chat with SSE streaming (body: {message, creatorId, sessionId})
-- `GET /api/schedule/list?creatorId=X` — calendar entries
-- `POST /api/schedule/create` — create draft
-- `PUT /api/schedule/update/{id}` — edit draft
-- `DELETE /api/schedule/delete/{id}` — remove draft
-- `PUT /api/schedule/approve/{id}` — approve for publishing
+- `GET /api/schedule/list?creatorId=X` — board/calendar entries (posts AND tasks; each row has `itemType`)
+- `POST /api/schedule/create` — create a POST (default) or a TASK (`itemType: "TASK"`)
+- `PUT /api/schedule/update/{id}` — edit/reschedule; also moves a task between columns via `taskStatus`
+- `DELETE /api/schedule/delete/{id}` — remove item
+- `PUT /api/schedule/approve/{id}` — approve a POST for publishing (posts only)
+- `PUT /api/schedule/publish/{id}` — mark an APPROVED post published (posts only)
 - `POST /api/strategy/generate` — generate 7-day content plan (rate limited: 10/hour)
 - `POST /api/strategy/generate-and-save` — generate + auto-save to calendar (rate limited: 10/hour)
 
@@ -259,6 +260,25 @@ One Maya user can connect multiple social accounts:
 - One social account can only be actively connected to ONE Maya user
 - /api/phyllo/accounts returns full profile data (followers, picture, niche, verified status)
 
+## Weekly Board (Jira-style) — Posts + Tasks in one table
+
+The `scheduled_posts` table backs a weekly board that holds two item kinds, distinguished by an `itemType` enum (single-table inheritance — chosen over a separate table so the board is one query / one update endpoint / one response shape):
+
+- **POST** (default): a content draft. Uses the `approvalStatus` lifecycle (PENDING → APPROVED → PUBLISHED / REJECTED / FAILED). Has caption, hashtags, mediaType, mediaUrl.
+- **TASK**: a to-do around content. Uses a separate `taskStatus` lifecycle (TODO → IN_PROGRESS → DONE). `caption` doubles as the task title; mediaType is stored as "NONE"; hashtags/mediaUrl are null.
+
+Key modeling decisions:
+- `itemType` and `taskStatus` are separate columns from `approvalStatus`, so the post-lifecycle and task-lifecycle enums never collide (POST rows have null taskStatus; TASK rows leave approvalStatus unused).
+- `scheduledFor` stays REQUIRED for both — every board item sits on a day.
+- `mediaType` stays NOT NULL (tasks carry "NONE") — chosen to avoid a manual DB constraint change; `ddl-auto=update` auto-adds the new `item_type`/`task_status` columns on startup.
+- Existing rows default to `itemType = POST` (backward compatible). AI ScheduleTools + StrategyController create posts via `new ScheduledPost()` + setters, so they keep working unchanged (itemType defaults to POST).
+- `toResponse` uses LinkedHashMap (not Map.of) because several fields can be null (taskStatus for posts, etc.).
+
+Endpoints (same for both kinds; type-aware internally):
+- create: POST omits itemType (→POST) or sends `itemType:"TASK"` + optional `taskStatus`
+- update: reschedule (`scheduledFor`) works for both; `taskStatus` moves a task between columns
+- approve/publish: posts only
+
 ## Platform-Aware Analytics (Instagram / Facebook / YouTube)
 
 Analytics are a HYBRID: a shared core (reused math) + a per-platform hero block. Focus platforms are Instagram, Facebook, YouTube; everything else falls back to Instagram-default behavior. Data availability drives everything (from Phyllo's engagement schema).
@@ -369,7 +389,7 @@ src/main/java/com/MAYA/MAYA/
 │   └── instagram/
 │       ├── Creator.java, Post.java, PostMetrics.java, Comment.java (Phyllo-aligned field names)
 │       ├── HashtagPerformance.java, TopCommenter.java, WeeklyReport.java
-│       └── ScheduledPost.java
+│       └── ScheduledPost.java (Jira-style board item: POST or TASK via itemType enum; separate taskStatus for tasks)
 ├── Repository/
 │   ├── userRepository.java, UserSocialAccountRepository.java, WeeklyGoalRepository.java
 │   ├── OtpVerificationRepository.java, PasswordResetTokenRepository.java

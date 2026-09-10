@@ -53,17 +53,40 @@ public class ScheduleController {
             return ResponseEntity.badRequest().body(Map.of("error", "Creator not found"));
         }
 
+        if (request.scheduledFor() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "scheduledFor is required"));
+        }
+        if (request.caption() == null || request.caption().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "caption/title is required"));
+        }
+
+        // Resolve item type (defaults to POST for backward compatibility)
+        ScheduledPost.ItemType itemType = parseItemType(request.itemType());
+
         ScheduledPost post = new ScheduledPost();
         post.setCreator(creator);
+        post.setItemType(itemType);
         post.setCaption(request.caption());
-        post.setHashtags(request.hashtags());
-        post.setMediaType(request.mediaType() != null ? request.mediaType() : "IMAGE");
-        post.setMediaUrl(request.mediaUrl());
         post.setScheduledFor(request.scheduledFor());
-        post.setApprovalStatus(ScheduledPost.ApprovalStatus.PENDING);
+
+        if (itemType == ScheduledPost.ItemType.TASK) {
+            // Tasks: no media/hashtags; use the work lifecycle. mediaType kept as
+            // a non-null placeholder ("NONE") since the column is NOT NULL.
+            post.setMediaType("NONE");
+            post.setHashtags(null);
+            post.setMediaUrl(null);
+            post.setTaskStatus(parseTaskStatus(request.taskStatus(), ScheduledPost.TaskStatus.TODO));
+            // approvalStatus stays at its PENDING default but is unused for tasks
+        } else {
+            // Posts: normal content fields + approval lifecycle
+            post.setHashtags(request.hashtags());
+            post.setMediaType(request.mediaType() != null ? request.mediaType() : "IMAGE");
+            post.setMediaUrl(request.mediaUrl());
+            post.setApprovalStatus(ScheduledPost.ApprovalStatus.PENDING);
+        }
 
         post = scheduledPostRepository.save(post);
-        log.info("Created scheduled post {} for creator {}", post.getId(), request.creatorId());
+        log.info("Created {} {} for creator {}", itemType, post.getId(), request.creatorId());
 
         return ResponseEntity.ok(toResponse(post));
     }
@@ -101,6 +124,13 @@ public class ScheduleController {
         if (request.mediaType() != null) post.setMediaType(request.mediaType());
         if (request.mediaUrl() != null) post.setMediaUrl(request.mediaUrl());
         if (request.scheduledFor() != null) post.setScheduledFor(request.scheduledFor());
+
+        // Task status change (e.g. dragging a task between TODO/IN_PROGRESS/DONE columns).
+        // Only meaningful for TASK items; ignored for posts.
+        if (request.taskStatus() != null && post.getItemType() == ScheduledPost.ItemType.TASK) {
+            post.setTaskStatus(parseTaskStatus(request.taskStatus(), post.getTaskStatus()));
+        }
+
         post.setUpdatedAt(LocalDateTime.now());
 
         post = scheduledPostRepository.save(post);
@@ -168,7 +198,9 @@ public class ScheduleController {
         String hashtags,
         String mediaType,
         String mediaUrl,
-        LocalDateTime scheduledFor
+        LocalDateTime scheduledFor,
+        String itemType,     // "POST" (default) or "TASK"
+        String taskStatus    // "TODO" | "IN_PROGRESS" | "DONE" (tasks only, defaults TODO)
     ) {}
 
     record UpdateScheduledPostRequest(
@@ -176,21 +208,49 @@ public class ScheduleController {
         String hashtags,
         String mediaType,
         String mediaUrl,
-        LocalDateTime scheduledFor
+        LocalDateTime scheduledFor,
+        String taskStatus    // move a task between board columns
     ) {}
 
-    // --- Response mapper ---
+    // --- Helpers ---
 
+    private ScheduledPost.ItemType parseItemType(String raw) {
+        if (raw == null || raw.isBlank()) return ScheduledPost.ItemType.POST;
+        try {
+            return ScheduledPost.ItemType.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ScheduledPost.ItemType.POST;
+        }
+    }
+
+    private ScheduledPost.TaskStatus parseTaskStatus(String raw, ScheduledPost.TaskStatus fallback) {
+        if (raw == null || raw.isBlank()) return fallback;
+        try {
+            return ScheduledPost.TaskStatus.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
+    // --- Response mapper ---
+    // Uses LinkedHashMap (not Map.of) because Map.of throws on null values and is
+    // capped at 10 entries — several of these fields can be null (e.g. taskStatus
+    // for posts, approvalStatus semantics for tasks).
     private Map<String, Object> toResponse(ScheduledPost post) {
-        return Map.of(
-            "id", post.getId(),
-            "creatorId", post.getCreator().getId(),
-            "caption", post.getCaption() != null ? post.getCaption() : "",
-            "hashtags", post.getHashtags() != null ? post.getHashtags() : "",
-            "mediaType", post.getMediaType(),
-            "scheduledFor", post.getScheduledFor().toString(),
-            "status", post.getApprovalStatus().name(),
-            "createdAt", post.getCreatedAt().toString()
-        );
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("id", post.getId());
+        m.put("creatorId", post.getCreator().getId());
+        m.put("itemType", post.getItemType() != null ? post.getItemType().name() : "POST");
+        m.put("caption", post.getCaption() != null ? post.getCaption() : "");
+        m.put("hashtags", post.getHashtags() != null ? post.getHashtags() : "");
+        m.put("mediaType", post.getMediaType());
+        m.put("mediaUrl", post.getMediaUrl());
+        m.put("scheduledFor", post.getScheduledFor() != null ? post.getScheduledFor().toString() : null);
+        // Post lifecycle status
+        m.put("status", post.getApprovalStatus() != null ? post.getApprovalStatus().name() : null);
+        // Task lifecycle status (null for posts)
+        m.put("taskStatus", post.getTaskStatus() != null ? post.getTaskStatus().name() : null);
+        m.put("createdAt", post.getCreatedAt() != null ? post.getCreatedAt().toString() : null);
+        return m;
     }
 }
