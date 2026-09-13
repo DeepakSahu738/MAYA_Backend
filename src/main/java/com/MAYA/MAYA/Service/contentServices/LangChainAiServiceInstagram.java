@@ -24,7 +24,7 @@ import java.util.List;
 //                                                             @V("contentType") String contentType,
 //                                                             @V("trendingOrEvergreen") String trendingOrEvergreen,
 //                                                             @V("targetAudience") String targetAudience);
-    @UserMessage("Generate 15 unique and engaging content ideas for the goal {{contentGoal}} in the niche {{niche}}. The content type is {{contentType}}, targeting {{targetAudience}}, and should be {{trendingOrEvergreen}} in style.Respond ONLY in a strict JSON array with the following format:[{\"contentIdea\": \"Your idea here\",\"script\": \"Your short script or caption here\",\"whyThisWorks\": \"Explain why this idea will resonate with the target audience\"},...]Do not include any introductory or explanatory text. Only return valid JSON. Generate 15")
+    @UserMessage("Generate 15 unique and engaging content ideas for the goal {{contentGoal}} in the niche {{niche}}. The content type is {{contentType}}, targeting {{targetAudience}}, and should be {{trendingOrEvergreen}} in style. For each idea, provide the content idea, a short script or caption, and why it works for the target audience.")
     ResponsePOJOInstaContentIdeaWRAPPER generateContentIdeas(@V("contentGoal") String contentGoal,
                                                              @V("niche") String niche,
                                                              @V("contentType") String contentType,
