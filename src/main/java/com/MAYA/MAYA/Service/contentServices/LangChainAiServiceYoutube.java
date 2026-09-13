@@ -37,7 +37,7 @@ public interface LangChainAiServiceYoutube {
             @V("trendingOrEvergreen") String trendingOrEvergreen
     );
 
-    @UserMessage("Recommend 3 thumbnail design styles tailored to {{toneStyle}} and {{niche}}.Suggest best color schemes, fonts, and visual cues that boost click-through rates.Incorporate elements that align with {{videoGoal}}, increasing brand consistency and engagement. keep the output in the object with only one node and in the same line")
+    @UserMessage("Recommend 3 thumbnail design styles tailored to {{toneStyle}} and {{niche}}.Suggest best color schemes, fonts, and visual cues that boost click-through rates.Incorporate elements that align with {{videoGoal}}, increasing brand consistency and engagement.")
     ResponsePOJOYTThumbnailAndBrandingWRAPPER suggestThumbnailAndBranding(
             @V("toneStyle") String toneStyle,
             @V("niche") String niche,
