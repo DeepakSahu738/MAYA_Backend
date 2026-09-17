@@ -24,4 +24,7 @@ public interface UserSocialAccountRepository extends JpaRepository<UserSocialAcc
 
     // Find by user + platform
     List<UserSocialAccount> findByUserIdAndPlatform(Long userId, String platform);
+
+    // Resolve the social-account link (and thus the owning user) from a creator id
+    Optional<UserSocialAccount> findByCreatorId(Long creatorId);
 }

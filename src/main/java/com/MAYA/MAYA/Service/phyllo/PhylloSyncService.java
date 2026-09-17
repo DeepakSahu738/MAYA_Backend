@@ -42,6 +42,7 @@ public class PhylloSyncService {
     private final EmailService emailService;
     private final com.MAYA.MAYA.Repository.userRepository userRepository;
     private final DataFreshnessService dataFreshnessService;
+    private final com.MAYA.MAYA.Service.CreatorProfileService creatorProfileService;
 
     // Timing constants
     private static final long INITIAL_DELAY_MS = 10_000;        // 10 seconds before first fetch
@@ -139,10 +140,11 @@ public class PhylloSyncService {
                 }
             });
 
-            // Update social account status
+            // Update social account status + auto-fill the user's Creator Profile / Media Kit
             socialAccountRepository.findByPhylloAccountId(phylloAccountId).ifPresent(account -> {
                 account.setLastSyncedAt(LocalDateTime.now());
                 socialAccountRepository.save(account);
+                autoFillCreatorProfile(account.getUserId());
             });
 
             // Generate analytics
@@ -201,6 +203,9 @@ public class PhylloSyncService {
                 });
 
                 analyticsProcessingService.processCreatorAnalytics(creator);
+                // Auto-fill the user's Creator Profile / Media Kit from freshly synced data
+                socialAccountRepository.findByPhylloAccountId(phylloAccountId)
+                    .ifPresent(account -> autoFillCreatorProfile(account.getUserId()));
                 // Retry is always the slow path (fires 30 min after connect), so the
                 // user is long gone — notify them their data is finally ready.
                 sendSyncCompleteEmail(creatorId, phylloIdToPost.size());
@@ -256,6 +261,22 @@ public class PhylloSyncService {
     /**
      * Send email notification when sync completes.
      */
+    /**
+     * Enrich the user's Creator Profile / Media Kit from freshly-synced data.
+     * Best-effort and non-fatal — a failure here must never break the sync flow.
+     * autoFillFromSync itself only writes empty, non-user-edited fields.
+     */
+    private void autoFillCreatorProfile(Long userId) {
+        if (userId == null) return;
+        try {
+            creatorProfileService.getOrCreate(userId);
+            creatorProfileService.autoFillFromSync(userId);
+            log.info("  → Creator profile auto-filled for user {}", userId);
+        } catch (Exception e) {
+            log.warn("  → Creator profile auto-fill failed for user {}: {}", userId, e.getMessage());
+        }
+    }
+
     private void sendSyncCompleteEmail(Long creatorId, int postsCount) {
         try {
             // Find the social account link for this creator

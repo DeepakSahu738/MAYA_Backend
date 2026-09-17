@@ -55,6 +55,12 @@ public class UserSocialAccount {
     @Column(name = "platform_username")
     private String platformUsername;
 
+    // Optional user-provided description of THIS specific connected account
+    // (e.g. "my serious fitness page" vs "personal meme account"). Feeds Maya
+    // for more tailored, account-specific responses. Nullable.
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     // Status
     @Column(name = "status", nullable = false)
     private String status; // CONNECTED, DISCONNECTED, PENDING
