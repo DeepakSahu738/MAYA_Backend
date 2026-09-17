@@ -57,6 +57,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/chat/**").permitAll()
                         .requestMatchers("/api/phyllo/**").authenticated()
+                        .requestMatchers("/api/creator-profile/**").authenticated()
                         .requestMatchers("/api/goals/**").authenticated()
                         .requestMatchers("/api/posts/**").authenticated()
                         .requestMatchers("/api/schedule/**").permitAll()
@@ -79,7 +80,7 @@ public class WebSecurityConfig {
             "https://mayamanage-84da8.firebaseapp.com",
             "https://mayamanage-84da8.web.app"
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
 

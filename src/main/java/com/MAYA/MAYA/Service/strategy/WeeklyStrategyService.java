@@ -44,6 +44,8 @@ public class WeeklyStrategyService {
     private final SnapshotAnalyticsService snapshotAnalyticsService;
     private final ChatLanguageModel chatLanguageModel;
     private final ObjectMapper objectMapper;
+    private final com.MAYA.MAYA.Service.CreatorProfileService creatorProfileService;
+    private final com.MAYA.MAYA.Repository.UserSocialAccountRepository socialAccountRepository;
 
     private static final int POSTS_TO_ANALYZE = 30;
 
@@ -295,8 +297,37 @@ public class WeeklyStrategyService {
             planStart.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase()
         );
 
+        // Prepend the user's Creator Profile / Media Kit context so the plan reflects
+        // their self-declared niche, tone, goals and audience — especially valuable
+        // when synced social data is sparse or unreliable.
+        String finalPrompt = prompt;
         try {
-            String response = chatLanguageModel.generate(prompt);
+            var accountOpt = socialAccountRepository.findByCreatorId(creator.getId());
+            Long ownerUserId = accountOpt
+                .map(com.MAYA.MAYA.Entity.UserSocialAccount::getUserId)
+                .orElse(null);
+            StringBuilder pre = new StringBuilder();
+            if (ownerUserId != null) {
+                String cvContext = creatorProfileService.buildProfileAiContext(ownerUserId);
+                if (cvContext != null && !cvContext.isBlank()) {
+                    pre.append(cvContext).append("\n\n");
+                }
+            }
+            String accountDesc = accountOpt
+                .map(com.MAYA.MAYA.Entity.UserSocialAccount::getDescription)
+                .orElse(null);
+            if (accountDesc != null && !accountDesc.isBlank()) {
+                pre.append("ABOUT THIS ACCOUNT (user-provided): ").append(accountDesc).append("\n\n");
+            }
+            if (pre.length() > 0) {
+                finalPrompt = pre + prompt;
+            }
+        } catch (Exception e) {
+            log.warn("Could not attach creator profile context to weekly strategy: {}", e.getMessage());
+        }
+
+        try {
+            String response = chatLanguageModel.generate(finalPrompt);
             log.info("Strategy LLM response received ({} chars)", response.length());
             return response;
         } catch (Exception e) {

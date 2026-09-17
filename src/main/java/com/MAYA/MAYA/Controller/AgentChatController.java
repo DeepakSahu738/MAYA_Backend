@@ -42,6 +42,8 @@ public class AgentChatController {
     private final CreatorAccessService creatorAccessService;
     private final RateLimiterService rateLimiterService;
     private final DashboardService dashboardService;
+    private final com.MAYA.MAYA.Service.CreatorProfileService creatorProfileService;
+    private final com.MAYA.MAYA.Repository.UserSocialAccountRepository socialAccountRepository;
 
     // Rate limits
     private static final int CHAT_MAX_REQUESTS = 30;        // 30 messages
@@ -81,6 +83,32 @@ public class AgentChatController {
         String currentDate = java.time.LocalDate.now().toString();
         String sessionId = request.sessionId() != null ? request.sessionId() : "default";
         String platformContext = dashboardService.buildPlatformAiContext(request.creatorId());
+
+        // Append the Creator Profile / Media Kit context (user-provided, high-confidence).
+        // This personalizes Maya especially when synced social data is sparse/unreliable.
+        try {
+            var accountOpt = socialAccountRepository.findByCreatorId(request.creatorId());
+            Long ownerUserId = accountOpt
+                .map(com.MAYA.MAYA.Entity.UserSocialAccount::getUserId)
+                .orElse(null);
+            if (ownerUserId != null) {
+                String cvContext = creatorProfileService.buildProfileAiContext(ownerUserId);
+                if (cvContext != null && !cvContext.isBlank()) {
+                    platformContext = (platformContext == null ? "" : platformContext) + "\n\n" + cvContext;
+                }
+            }
+            // Per-account note for THIS specific account (more precise than the person-level CV)
+            String accountDesc = accountOpt
+                .map(com.MAYA.MAYA.Entity.UserSocialAccount::getDescription)
+                .orElse(null);
+            if (accountDesc != null && !accountDesc.isBlank()) {
+                platformContext = (platformContext == null ? "" : platformContext)
+                    + "\n\nABOUT THIS ACCOUNT (user-provided): " + accountDesc;
+            }
+        } catch (Exception e) {
+            log.warn("Could not attach creator profile context for creator {}: {}", request.creatorId(), e.getMessage());
+        }
+
         TokenStream tokenStream = mayaAiService.chat(sessionId, request.message(), request.creatorId(), currentDate, platformContext);
 
         // Wire the token stream to our SSE sink
